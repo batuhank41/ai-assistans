@@ -1,0 +1,235 @@
+[{
+        "id": 1,
+        "name": "Apple MacBook Air M2",
+        "brand": "Apple",
+        "category": "bilgisayar",
+        "price": 36999,
+        "features": ["M2 çip", "13 inç Retina ekran", "16GB RAM", "256GB SSD"],
+        "usage_tags": ["iş", "okul", "günlük"],
+        "url": "https://www.hepsiburada.com/apple-macbook-air-m2-16gb-256gb-ssd-macos-13-tasinabilir-bilgisayar-yildiz-isigi-mc7w4tu-a-pm-HBC000078JDQP"
+    },
+    {
+        "id": 2,
+        "name": "Lenovo ThinkPad X1 Carbon",
+        "brand": "Lenovo",
+        "category": "bilgisayar",
+        "price": 95000,
+        "features": ["14.Nesil", "14 inç ekran", "32GB RAM", "1TB SSD"],
+        "usage_tags": ["oyun", "günlük", "iş"],
+        "url": "https://www.hepsiburada.com/lenovo-thinkpad-x1-carbon-gen12-21kc006btx-ultra7-155u-32-gb-1-tb-ssd-14-w11pro-dizustu-bilgisayar-pm-HBC00006WHFAV"
+    },
+    {
+        "id": 3,
+        "name": "Dell Latitude 3550",
+        "brand": "Dell",
+        "category": "bilgisayar",
+        "price": 36000,
+        "features": ["İntel® Core™ Ultra 5", "13 inç InfinityEdge", "16GB RAM", "512GB SSD"],
+        "usage_tags": ["iş", "okul", "günlük"],
+        "url": "https://www.hepsiburada.com/dell-latitude-3550-ultra-5-125u-16gb-512gb-ssd-15-6-fhd-w11p-tasinabilir-bilgisayar-p-HBCV00008O16PM?magaza=BT%20Pazar"
+    },
+    {
+        "id": 4,
+        "name": "Samsung Galaxy S23",
+        "brand": "Samsung",
+        "category": "telefon",
+        "price": 64800,
+        "features": ["Snapdragon 8 Gen 2", "6.8 inç AMOLED", "12GB RAM", "512GB depolama"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/samsung-galaxy-s23-ultra-512-gb-12-gb-ram-samsung-turkiye-garantili-altin-pm-HBC00003P2GFN"
+    },
+    {
+        "id": 5,
+        "name": "iPhone 14 Pro Max",
+        "brand": "Apple",
+        "category": "telefon",
+        "price": 102949,
+        "features": ["A16 Bionic", "6.1 inç Super Retina", "6GB RAM", "128GB depolama"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/iphone-14-pro-max-128-gb-mor-p-HBCV00002W46NH"
+    },
+
+    {
+        "id": 6,
+        "name": "Asus ProArt PA279CV",
+        "brand": "Asus",
+        "category": "monitor",
+        "price": 35999,
+        "features": ["27 inç 4K IPS", "100% sRGB", "USB-C", "Ergonomik stand"],
+        "usage_tags": ["iş", "günlük"],
+        "url": "https://www.hepsiburada.com/asus-proart-pa279cv-27-4k-ips-monitor-p-HBCV0000PROART279"
+    },
+
+    {
+        "id": 7,
+        "name": "Asus ROG Strix G16",
+        "brand": "Asus",
+        "category": "bilgisayar",
+        "price": 126899,
+        "features": ["Intel® Core™ i9 14900HX", "16 inç FHD", "64GB RAM", "2TB SSD", "RTX 4060"],
+        "usage_tags": ["oyun"],
+        "url": "https://www.hepsiburada.com/asus-rog-strix-g16-i9-14900hx-g614jvr-n3243-15-64gb-2tb-rtx4060-8gb-freedos-16-wuxga-gaming-laptop-pm-HBC0000AP15OR"
+    },
+    {
+        "id": 8,
+        "name": "Sony WH-1000XM5",
+        "brand": "Sony",
+        "category": "kulaklık",
+        "price": 17959,
+        "features": ["Aktif gürültü önleme", "30 saat pil", "Bluetooth 5.2"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/sony-wh-1000xm5-kulak-ustu-bluetooth-kulaklik-siyah-p-HBCV00002HTTV3"
+    },
+    {
+        "id": 9,
+        "name": "Acer Aspire Lite AL16-54P",
+        "brand": "Acer",
+        "category": "bilgisayar",
+        "price": 18999,
+        "features": ["Intel i5", "15.6 inç HD", "16GB RAM", "512GB SSD"],
+        "usage_tags": ["okul", "günlük"],
+        "url": "https://www.hepsiburada.com/acer-aspire-lite-al16-54p-intel-core-i5-1334u-16gb-512gb-ssd-freedos-15-6-fhd-tasinabilir-bilgisayar-nx-d76ey-001-p-HBCV0000A10UR3?magaza=Hepsiburada"
+    },
+
+    {
+        "id": 10,
+        "name": "LG UltraGear 24GS60F",
+        "brand": "LG",
+        "category": "monitor",
+        "price": 4599,
+        "features": ["24 inç QHD", "180Hz", "1ms tepki süresi", "FreeSync/G-Sync uyumlu"],
+        "usage_tags": ["oyun", "günlük"],
+        "url": "https://www.hepsiburada.com/lg-ultragear-23-8-24gs60f-b-180hz-1ms-gtg-hdr10-full-hd-ips-gaming-monitor-pm-HBC00006L45C7"
+    },
+    {
+        "id": 11,
+        "name": "Philips 243V7QDSB",
+        "brand": "Philips",
+        "category": "monitor",
+        "price": 16810,
+        "features": ["24 inç FHD", "IPS panel", "75Hz", "LowBlue Mode"],
+        "usage_tags": ["okul", "günlük"],
+        "url": "https://www.hepsiburada.com/philips-243v7qdsb-01-23-8-5ms-analog-dvi-hdmi-full-hd-ips-led-monitor-pm-HB00000BUWH7"
+    },
+    {
+        "id": 12,
+        "name": "Xiaomi Redmi Buds 6",
+        "brand": "Xiaomi",
+        "category": "kulaklık",
+        "price": 739,
+        "features": ["Aktif gürültü azaltma", "30 saat pil", "Bluetooth 5.4"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/xiaomi-redmi-buds-6-active-beyaz-kulakici-kulaklik-tws-xiaomi-turkiye-garantili-p-HBCV00006U6ZDS"
+    },
+    {
+        "id": 13,
+        "name": "HP Victus Gaming 15-FA2704NT",
+        "brand": "HP",
+        "category": "bilgisayar",
+        "price": 31000,
+        "features": ["Intel i5", "15.6 inç HD", "16GB RAM", "512GB SSD"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/hp-victus-gaming-15-fa2704nt-intel-core-i5-13420h-16gb-512gb-ssd-rtx3050-freedos-15-6-tasinabilir-bilgisayar-b7tg9ea-pm-HBC00008KY9FX"
+    },
+    {
+        "id": 14,
+        "name": "MSI Katana 17 B12VFK",
+        "brand": "MSI",
+        "category": "bilgisayar",
+        "price": 114314,
+        "features": ["i5 12. Nesil", "17.3\" FHD 144Hz", "16GB RAM", "512GB SSD", "RTX 4060"],
+        "usage_tags": ["oyun"],
+        "url": "https://www.hepsiburada.com/msi-katana-17-b12vfk-1031xtr-i5-12450h-16gb-ram-512gb-ssd-rtx-4060-freedos-17-3-fhd-144hz-tasinabilir-bilgisayar-p-HBCV00007R6K9D"
+    },
+    {
+        "id": 15,
+        "name": "HP Spectre x360",
+        "brand": "HP",
+        "category": "bilgisayar",
+        "price": 119500,
+        "features": ["i7 Ultra 7", "14\" OLED Dokunmatik", "32GB RAM", "1TB SSD"],
+        "usage_tags": ["iş", "günlük"],
+        "url": "https://www.hepsiburada.com/hp-spectre-x360-14-eu0002nt-9v2r8ea-intel-ultra-7-155h-32gb-ram-1tb-ssd-14-inc-oled-dokunmatik-windows-11-tasinabilir-bilgisayar-pm-HBC000066C2ID"
+    },
+    {
+        "id": 16,
+        "name": "Huawei MateBook D16",
+        "brand": "Huawei",
+        "category": "bilgisayar",
+        "price": 44499,
+        "features": ["Intel i5 13. Nesil", "16 inç", "16GB RAM", "1TB SSD", "Windows 11 Pro"],
+        "usage_tags": ["okul", "günlük"],
+        "url": "https://www.hepsiburada.com/huawei-matebook-d16-2024-intel-core-i5-13420h-16gb-1tb-ssd-windows-11-home-16-ips-tasinabilir-bilgisayar-pm-HBC00005PGQ9Y"
+    },
+    {
+        "id": 17,
+        "name": "Apple iPhone 16 Pro Max",
+        "brand": "Apple",
+        "category": "telefon",
+        "price": 119000,
+        "features": ["A18 Pro çip", "6.9 inç xdr ekran", "512GB depolama"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/iphone-16-pro-max-512gb-siyah-p-HBCV00006Y4HC9"
+    },
+    {
+        "id": 18,
+        "name": "OnePlus 12",
+        "brand": "OnePlus",
+        "category": "telefon",
+        "price": 32000,
+        "features": ["Android 14", "6.82 inç AMOLED", "16GB RAM", "256GB depolama"],
+        "usage_tags": ["günlük", "oyun"],
+        "url": "https://www.hepsiburada.com/oneplus-12r-256gb-16gb-iron-gray-akilli-cep-telefonu-gri-p-HBCV00006C9QD4"
+    },
+    {
+        "id": 19,
+        "name": "Samsung Odyssey G9",
+        "brand": "Samsung",
+        "category": "monitor",
+        "price": 42600,
+        "features": ["49\" Kavisli QHD", "144Hz", "1ms tepki süresi", "QLED"],
+        "usage_tags": ["oyun", "iş"],
+        "url": "https://www.hepsiburada.com/samsung-49-inc-odyssey-g9-g91f-dqhd-144-hz-oyun-monitoru-ls49fg916euxuf-pm-HBC00008KWJSB"
+    },
+    {
+        "id": 20,
+        "name": "LG Ultragear",
+        "brand": "LG",
+        "category": "monitor",
+        "price": 149727,
+        "features": ["45\" UWQHD OLED", "DCI-P3 %98", "0,03ms tepki süresi", "240Hz", "NVIDIA G-SYNC destekli", "Kavisli OLED panel"],
+        "usage_tags": ["oyun", "iş"],
+        "url": "https://www.hepsiburada.com/lg-ultragear-45-45gs95qe-b-0-03ms-gtg-240hz-hdmix2-display-freesync-premium-800r-displayhdr-true-black-400-oled-kavisli-oyuncu-monitoru-pm-HBC00006QK3PL"
+    },
+    {
+        "id": 21,
+        "name": "Bose QuietComfort Ultra",
+        "brand": "Bose",
+        "category": "kulaklık",
+        "price": 13489,
+        "features": ["Aktif Gürültü Önleme", "Gürültü Önleyici", "6 saat pil"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/bose-quietcomfort-ultra-earbuds-bluetooth-kulakici-kulaklik-pm-HBC00006L3CT0"
+    },
+    {
+        "id": 22,
+        "name": "JBL Tune 520BT Siyah Kulak Üstü Bluetooth Kulaklık",
+        "brand": "JBL",
+        "category": "kulaklık",
+        "price": 1177,
+        "features": ["Adaptif Gürültü Engelleme", "24 saat pil", "Hafif tasarım"],
+        "usage_tags": ["okul", "günlük"],
+        "url": "https://www.hepsiburada.com/jbl-tune-520bt-siyah-kulak-ustu-bluetooth-kulaklik-ithalat-firma-garantili-pm-HBC0000AHW5WW"
+    },
+    {
+        "id": 23,
+        "name": "Garmin Fenix 7 Pro Solar",
+        "brand": "Garmin",
+        "category": "akıllı saat",
+        "price": 47999,
+        "features": ["Güneş Enerjisi Şarjı", "Askeri dayanıklılık", "GPS, Çoklu spor modları"],
+        "usage_tags": ["günlük", "spor"],
+        "url": "https://www.hepsiburada.com/garmin-fenix-7-pro-solar-edition-slate-gri-siyah-pm-HBC000094PKGC"
+    }
+
+]

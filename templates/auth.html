@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş / Kayıt</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <a class="back-btn" href="/">←</a>
+    <div class="container" style="align-items:center;">
+        <div class="auth-card" style="max-width: 640px;">
+            <h2 style="margin:0 0 8px; font-size:18px;">Hesap</h2>
+            <p style="margin:0 0 14px; color: var(--muted); font-size:13px;">Giriş yap veya kayıt ol; geçmişin saklansın.</p>
+
+            <div class="auth-row">
+                <input type="text" id="auth-username" class="auth-input" placeholder="Kullanıcı adı">
+                <input type="password" id="auth-password" class="auth-input" placeholder="Şifre">
+            </div>
+
+            <div class="auth-actions">
+                <button class="submit-btn btn-sm" onclick="registerUser()">Kayıt Ol</button>
+                <button class="submit-btn btn-sm" onclick="loginUser()">Giriş Yap</button>
+            </div>
+
+            <div id="auth-message" class="notice" style="display:none"></div>
+        </div>
+    </div>
+
+    <script>
+        const AUTH_TOKEN_KEY = 'auth_token';
+
+        async function registerUser() {
+            const u = document.getElementById('auth-username').value.trim();
+            const p = document.getElementById('auth-password').value.trim();
+            const msg = document.getElementById('auth-message');
+            msg.style.display = 'none';
+            msg.textContent = '';
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: u,
+                        password: p
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Kayıt başarısız');
+                msg.textContent = 'Kayıt başarılı, şimdi giriş yapın.';
+                msg.style.display = 'block';
+            } catch (e) {
+                msg.textContent = e.message;
+                msg.style.display = 'block';
+            }
+        }
+
+        async function loginUser() {
+            const u = document.getElementById('auth-username').value.trim();
+            const p = document.getElementById('auth-password').value.trim();
+            const msg = document.getElementById('auth-message');
+            msg.style.display = 'none';
+            msg.textContent = '';
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: u,
+                        password: p
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Giriş başarısız');
+                if (data.token) {
+                    localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+                    window.location.href = '/';
+                }
+            } catch (e) {
+                msg.textContent = e.message;
+                msg.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>

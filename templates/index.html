@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Alışveriş Asistanı</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+    <!-- Kullanıcı rozeti -->
+    <div id="user-badge" class="user-badge" style="display:none">
+        <span class="dot"></span>
+        <span id="user-badge-name"></span>
+    </div>
+
+    <!-- Giriş/Kayıt chip'leri -->
+    <div id="nav-chips" class="nav-chips" style="display:none">
+        <a class="chip" href="/auth">Giriş Yap</a>
+        <a class="chip alt" href="/auth">Kayıt Ol</a>
+    </div>
+
+    <div class="container">
+        <div class="main-card">
+            <header class="header">
+                <h1>🛒 AI Alışveriş Asistanı</h1>
+                <p>Akıllı ürün önerileri için uygun dille yazın</p>
+            </header>
+
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="user-input">Alışveriş isteğinizi uygun dille yazın:</label>
+                    <div class="search-bar">
+                        <input type="text" class="search-input" id="user-input" placeholder="Örn: 40000 TL bütçe ile Apple bilgisayar istiyorum...">
+                        <div class="search-icon-right">
+                            <svg class="search-line-icon" viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="7" stroke-width="2" fill="none"/>
+                                <line x1="16" y1="16" x2="21" y2="21" stroke-width="2"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button class="submit-btn" id="submit-btn" onclick="getRecommendation()">
+                        <span>Gönder</span>
+                    </button>
+
+                        <div class="loading" id="loading" style="display:inline-flex;">
+                            <span id="loading-text">AI Bekliyor</span>
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+            </section>
+
+            <!-- Hata mesajı -->
+            <div class="error" id="error" style="display:none;">
+                <div class="error-icon">!</div>
+                <div class="error-texts">
+                    <div id="error-title" class="error-title">Uygun Ürün Bulunamadı</div>
+                    <div id="error-message" class="error-message">Bir hata oluştu. Lütfen tekrar dene.</div>
+                </div>
+            </div>
+
+
+
+
+            <!-- Hata sonrası yeniden giriş alanı -->
+            <div id="retry-section" style="display:none; margin-top:12px;">
+                <label id="retry-label" for="retry-input" style="display:block; margin-bottom:6px; font-size:14px;">
+        İsteğini biraz daha detaylandırarak tekrar yaz:
+    </label>
+
+                <!-- ÜSTTEKİYLE AYNI BAR -->
+                <div class="search-bar">
+                    <input type="text" id="retry-input" class="search-input" placeholder="Örn: 20 bin TL bütçeyle oyun için laptop istiyorum">
+                    <div class="search-icon-right">
+                        <svg class="search-line-icon" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7" stroke-width="2" fill="none"/>
+                            <line x1="16" y1="16" x2="21" y2="21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <button type="button" class="submit-btn" style="margin-top:12px; width:auto; padding-inline:16px;" onclick="getRecommendationRetry()">
+        Tekrar Dene
+    </button>
+            </div>
+
+
+            <div class="notice" id="notice" style="display:none;"></div>
+
+            <div class="result" id="result" style="display:none;">
+                <div class="result-header">
+                    <h2>
+                        🎯 Önerilen Ürün
+                        <span id="elapsed-time" class="elapsed-time" style="display:none"></span>
+                    </h2>
+                </div>
+
+                <table class="product-table">
+                    <tr>
+                        <th>Özellik</th>
+                        <th>Detay</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Ürün Adı</strong></td>
+                        <td id="product-name"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Ürün Bağlantısı</strong></td>
+                        <td>
+                            <a class="product-link" id="product-url" href="#" target="_blank">
+                                hepsiburada'da İncele →
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fiyat</strong></td>
+                        <td id="product-price"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>AI Açıklaması</strong></td>
+                        <td class="ai-description" id="ai-description"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="alternatives" id="alternatives" style="display:none;">
+                <h3>💡 Önerilen Diğer Ürünler</h3>
+                <div id="alternatives-list"></div>
+            </div>
+            </div>
+
+            <!-- Geçmiş kartı -->
+            <div class="history" id="history" style="margin-top:16px; width:100%; max-width:880px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <h3 style="margin:0;">📜 Geçmiş</h3>
+                    <button class="submit-btn" style="width:auto; padding:8px 12px; font-size:13px;" onclick="clearHistory && clearHistory()">
+                    Geçmişi Temizle
+                </button>
+                </div>
+                <p id="history-info" class="history-info" style="color: var(--muted); font-size:13px; margin:6px 0 10px;"></p>
+                <ul id="history-list" style="list-style:none; padding:0; margin:0;"></ul>
+            </div>
+        </div>
+
+        <script>
+            let loadingTimer = null;
+            // Artık misafir için localHistory kullanmıyoruz; sadece yapı bozulmasın diye duruyor.
+            let localHistory = [];
+            const AUTH_TOKEN_KEY = 'auth_token';
+
+            // Hata tipine göre sayaçlar (2. hata sonrası farklı mesaj için)
+            const errorCounters = {
+                parse: 0,
+                budget_only: 0,
+                budget_out_of_range: 0,
+                category_invalid: 0
+            };
+
+            /**
+             * Ana istek fonksiyonu
+             * customInput gelirse onu kullanır, gelmezse ana inputtaki değeri okur.
+             */
+            async function getRecommendation(customInput = null) {
+                const userInputEl = document.getElementById('user-input');
+                const rawInput = customInput !== null ?
+                    String(customInput) :
+                    (userInputEl ? userInputEl.value : '');
+                const userInput = rawInput.trim();
+
+                const submitBtn = document.getElementById('submit-btn');
+                const loading = document.getElementById('loading');
+                const loadingText = document.getElementById('loading-text');
+                const errorBox = document.getElementById('error');
+                const errorMsg = document.getElementById('error-message');
+                const result = document.getElementById('result');
+                const notice = document.getElementById('notice');
+                const retrySection = document.getElementById('retry-section');
+
+                // Eski hata / notice / retry temizle
+                if (errorBox) errorBox.style.display = 'none';
+                if (errorMsg) errorMsg.textContent = '';
+                if (notice) {
+                    notice.textContent = '';
+                    notice.style.display = 'none';
+                }
+                if (retrySection) retrySection.style.display = 'none';
+
+                if (!userInput) {
+                    showError('Lütfen bir istek girin.');
+                    return;
+                }
+
+                if (submitBtn) submitBtn.disabled = true;
+                if (loadingText) loadingText.textContent = 'AI Düşünüyor...';
+                if (loading) loading.style.display = 'inline-flex';
+
+                const start = Date.now();
+                if (loadingTimer) clearInterval(loadingTimer);
+
+                loadingTimer = setInterval(() => {
+                    const s = Math.floor((Date.now() - start) / 1000);
+                    if (loadingText) {
+                        loadingText.textContent = 'AI Düşünüyor... ' + s + ' sn';
+                    }
+                }, 1000);
+
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
+                try {
+                    const response = await fetch('/recommend', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? {
+                                'Authorization': 'Bearer ' + token
+                            } : {})
+                        },
+                        body: JSON.stringify({
+                            user_input: userInput
+                        })
+                    });
+
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (e) {
+                        data = {};
+                    }
+
+                    // ❌ HATA DURUMU
+                    if (!response.ok) {
+                        const title = data.error_title || 'Hata';
+                        const msg = data.error_message || data.error || 'Bir hata oluştu. Lütfen tekrar dene.';
+                        showError(msg, title);
+
+                        const errType = data.error_type || 'parse';
+                        const prevCount = errorCounters[errType] || 0;
+
+                        if (data.ask_new_input && retrySection) {
+                            const retryLabel = document.getElementById('retry-label');
+                            const retryInput = document.getElementById('retry-input');
+
+                            if (retryLabel) {
+                                if (errType === 'budget_only') {
+                                    retryLabel.textContent =
+                                        'İsteğini kategori ve kullanım amacını belirterek tekrar yaz:';
+                                } else if (errType === 'budget_out_of_range') {
+                                    if (prevCount >= 1 && data.min_price != null && data.max_price != null) {
+                                        retryLabel.textContent =
+                                            `Bu kategorideki ürünler yaklaşık ${data.min_price}–${data.max_price} TL arasında. ` +
+                                            `İsteğini bu aralığa uygun bir bütçeyle tekrar yaz:`;
+                                    } else {
+                                        retryLabel.textContent =
+                                            'İsteğini farklı bir bütçe ile tekrar yaz:';
+                                    }
+                                } else if (errType === 'category_invalid' || errType === 'category_not_found') {
+                                    // Kategori bulunamadı veya geçersiz kategori hatası
+                                    if (Array.isArray(data.categories) && data.categories.length > 0) {
+                                        retryLabel.textContent =
+                                            `Yazdığın kategori sistemde bulunamadı. Lütfen farklı bir kategoride ürün ara.`;
+                                    } else {
+                                        retryLabel.textContent =
+                                            'İsteğini uygun bir kategori belirterek tekrar yaz:';
+                                    }
+                                } else {
+                                    retryLabel.textContent =
+                                        'İsteğini biraz daha detaylandırarak tekrar yaz:';
+                                }
+                            }
+
+                            if (retryInput) {
+                                // Yeni input her seferinde boş başlasın, sadece placeholder dursun
+                                retryInput.value = '';
+                            }
+                            retrySection.style.display = 'block';
+                        }
+
+                        if (errorCounters.hasOwnProperty(errType)) {
+                            errorCounters[errType] = (errorCounters[errType] || 0) + 1;
+                        }
+
+                        // ❗ DİKKAT: Artık ana input temizlenmiyor
+                        return;
+                    }
+
+                    // ✅ BAŞARILI DURUM
+                    if (retrySection) retrySection.style.display = 'none';
+
+                    const primary = data.recommended ? (data.recommended[0] || null) : null;
+
+                    document.getElementById('product-name').textContent =
+                        (primary ? primary.name : data.product_name);
+
+                    document.getElementById('product-url').href =
+                        (primary ? primary.url : data.product_url);
+
+                    document.getElementById('product-price').textContent =
+                        (primary ? (primary.price || data.product_price) : data.product_price) + ' TL';
+
+                    document.getElementById('ai-description').textContent =
+                        (primary ? (primary.ai_reason || data.ai_description) : data.ai_description);
+
+                    if (result) result.style.display = 'block';
+
+                    if (data.notice && notice) {
+                        notice.textContent = data.notice;
+                        notice.style.display = 'block';
+                    }
+
+                    const elapsed = Math.ceil((Date.now() - start) / 1000);
+                    const elapsedEl = document.getElementById('elapsed-time');
+                    if (elapsedEl) {
+                        elapsedEl.textContent = '(' + elapsed + ' sn düşündüm)';
+                        elapsedEl.style.display = 'inline';
+                    }
+
+                    const list = document.getElementById('alternatives-list');
+                    const altsWrapper = document.getElementById('alternatives');
+                    if (list) list.innerHTML = '';
+
+                    if (data.recommended && data.recommended.length > 1 && list && altsWrapper) {
+                        data.recommended.slice(1).forEach(p => {
+                            const card = document.createElement('div');
+                            card.className = 'alt-card';
+
+                            card.innerHTML = `
+                            <table class="product-table">
+                                <tr><th>Özellik</th><th>Detay</th></tr>
+                                <tr><td><strong>Ürün Adı</strong></td><td>${p.name}</td></tr>
+                                <tr><td><strong>Ürün Bağlantısı</strong></td>
+                                    <td><a class="product-link" href="${p.url}" target="_blank">İncele →</a></td>
+                                </tr>
+                                <tr><td><strong>Fiyat</strong></td><td>${p.price} TL</td></tr>
+                                <tr><td><strong>AI Açıklaması</strong></td><td class="ai-description">${p.ai_reason}</td></tr>
+                            </table>`;
+                            list.appendChild(card);
+                        });
+                        altsWrapper.style.display = 'block';
+                    } else if (altsWrapper) {
+                        altsWrapper.style.display = 'none';
+                    }
+
+                    // ✅ GEÇMİŞ KAYDI
+                    const entry = {
+                        time: new Date().toLocaleString(),
+                        timestamp: Math.floor(Date.now() / 1000),
+                        input: userInput,
+                        product_name: (primary ? (primary.name || data.product_name) : data.product_name),
+                        product_price: (primary ? (primary.price || data.product_price) : data.product_price)
+                    };
+
+                    if (token) {
+                        // Giriş yapmış kullanıcı → sunucu tarafı geçmişi yenile
+                        await loadHistory();
+                    } else {
+                        // Giriş YOK → hiçbir yere kaydetme, sadece boş liste render et
+                        renderHistory([], false);
+                    }
+
+                } catch (err) {
+                    showError(err.message || 'Bir hata oluştu. Lütfen tekrar dene.');
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (loadingTimer) clearInterval(loadingTimer);
+                    if (loading) loading.style.display = 'none';
+                    if (loadingText) loadingText.textContent = 'AI Bekliyor...';
+                }
+            }
+
+            // Hata sonrası açılan inputtan tekrar dene
+            async function getRecommendationRetry() {
+                const retryInput = document.getElementById('retry-input');
+                if (!retryInput) return;
+
+                const val = retryInput.value.trim();
+                if (!val) {
+                    showError('Lütfen isteğini tekrar yaz.');
+                    return;
+                }
+
+                const retrySection = document.getElementById('retry-section');
+                if (retrySection) retrySection.style.display = 'none';
+
+                // Ana inputu DEĞİŞTİRMEDEN, sadece bu metinle istek at
+                await getRecommendation(val);
+            }
+
+            function showError(message, title) {
+                const errorBox = document.getElementById('error');
+                const errorTitle = document.getElementById('error-title');
+                const errorMsg = document.getElementById('error-message');
+
+                if (errorTitle) errorTitle.textContent = title || 'Hata';
+                if (errorMsg) errorMsg.textContent = message;
+                if (errorBox) {
+                    errorBox.style.display = 'flex'; // ✅ flex yap ki ikon + yazı yan yana olsun
+                }
+
+                const result = document.getElementById('result');
+                const alts = document.getElementById('alternatives');
+                if (result) result.style.display = 'none';
+                if (alts) alts.style.display = 'none';
+            }
+
+
+            function clearNotice() {
+                const notice = document.getElementById('notice');
+                if (notice) {
+                    notice.style.display = 'none';
+                }
+            }
+
+            async function refreshAuthUI() {
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                const badge = document.getElementById('user-badge');
+                const badgeName = document.getElementById('user-badge-name');
+                const chips = document.getElementById('nav-chips');
+                const historyInfoEl = document.getElementById('history-info');
+
+                try {
+                    const res = await fetch('/me', {
+                        headers: token ? {
+                            'Authorization': 'Bearer ' + token
+                        } : {}
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (chips) chips.style.display = 'none';
+                        if (badge) badge.style.display = 'inline-flex';
+                        if (badgeName) {
+                            badgeName.textContent = data.user && data.user.username ? data.user.username : '';
+                        }
+                        if (historyInfoEl) {
+                            historyInfoEl.textContent =
+                                'Geçmişin hesabına kaydediliyor. İstediğin zaman temizleyebilirsin.';
+                        }
+                        await loadHistory();
+                    } else {
+                        if (chips) chips.style.display = 'inline-flex';
+                        if (badge) badge.style.display = 'none';
+                        if (badgeName) badgeName.textContent = '';
+                        if (historyInfoEl) {
+                            historyInfoEl.textContent =
+                                'Giriş yapmadığın için geçmişin kaydedilmiyor.';
+                        }
+                        renderHistory([], false);
+                    }
+                } catch (e) {
+                    if (chips) chips.style.display = 'inline-flex';
+                    if (badge) badge.style.display = 'none';
+                    if (badgeName) badgeName.textContent = '';
+                    if (historyInfoEl) {
+                        historyInfoEl.textContent =
+                            'Giriş yapmadığın için geçmişin kaydedilmiyor.';
+                    }
+                    renderHistory([], false);
+                }
+            }
+
+            async function registerUser() {
+                const u = document.getElementById('auth-username').value.trim();
+                const p = document.getElementById('auth-password').value.trim();
+                const msg = document.getElementById('auth-message');
+                msg.style.display = 'none';
+                msg.textContent = '';
+                try {
+                    const res = await fetch('/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: u,
+                            password: p
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Kayıt başarısız');
+                    msg.textContent = 'Kayıt başarılı, şimdi giriş yapın.';
+                    msg.style.display = 'block';
+                } catch (e) {
+                    msg.textContent = e.message;
+                    msg.style.display = 'block';
+                }
+            }
+
+            async function loginUser() {
+                const u = document.getElementById('auth-username').value.trim();
+                const p = document.getElementById('auth-password').value.trim();
+                const msg = document.getElementById('auth-message');
+                msg.style.display = 'none';
+                msg.textContent = '';
+                try {
+                    const res = await fetch('/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: u,
+                            password: p
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Giriş başarısız');
+                    if (data.token) {
+                        localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+                        await refreshAuthUI();
+                    }
+                } catch (e) {
+                    msg.textContent = e.message;
+                    msg.style.display = 'block';
+                }
+            }
+
+            async function logout() {
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                if (token) {
+                    try {
+                        await fetch('/logout', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + token
+                            }
+                        });
+                    } catch (e) {}
+                }
+                localStorage.removeItem(AUTH_TOKEN_KEY);
+                await refreshAuthUI();
+            }
+
+            function renderHistory(list, isLoggedIn) {
+                const ul = document.getElementById('history-list');
+                ul.innerHTML = '';
+                if (!list || list.length === 0) {
+                    const li = document.createElement('li');
+                    // Misafir de olsa, entry yoksa sadece bilgilendirme
+                    li.textContent = isLoggedIn ?
+                        'Henüz bir geçmiş kaydı yok.' :
+                        'Geçmiş tutulmuyor.';
+                    ul.appendChild(li);
+                    return;
+                }
+                list.slice().reverse().forEach(item => {
+                    const li = document.createElement('li');
+                    li.style.display = 'flex';
+                    li.style.alignItems = 'center';
+                    li.style.justifyContent = 'space-between';
+                    const t = item.time ? item.time : new Date(item.timestamp * 1000).toLocaleString();
+                    const left = document.createElement('span');
+                    left.textContent = `[${t}] "${item.input}" → ${item.product_name} (${item.product_price} TL)`;
+                    const btn = document.createElement('button');
+                    btn.className = 'submit-btn';
+                    btn.style.width = 'auto';
+                    btn.style.padding = '6px 10px';
+                    btn.style.fontSize = '12px';
+                    btn.textContent = 'Sil';
+                    btn.onclick = () => deleteHistoryItem(item.timestamp);
+                    li.appendChild(left);
+                    li.appendChild(btn);
+                    ul.appendChild(li);
+                });
+            }
+
+            async function loadHistory() {
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                if (!token) {
+                    // Misafir → sunucudan isteme, boş göster
+                    renderHistory([], false);
+                    return;
+                }
+                try {
+                    const res = await fetch('/history', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    const data = await res.json();
+                    renderHistory(data.history || [], true);
+                } catch (e) {
+                    renderHistory([], true);
+                }
+            }
+
+            async function deleteHistoryItem(ts) {
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                if (!token) {
+                    // Misafir için zaten kayıt yok
+                    renderHistory([], false);
+                    return;
+                }
+                try {
+                    await fetch('/history/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            timestamp: ts
+                        })
+                    });
+                    await loadHistory();
+                } catch (e) {
+                    await loadHistory();
+                }
+            }
+
+            async function clearHistory() {
+                const token = localStorage.getItem(AUTH_TOKEN_KEY);
+                if (!token) {
+                    // Misafir → hiçbir şey yapma, zaten kayıt yok
+                    renderHistory([], false);
+                    return;
+                }
+                try {
+                    await fetch('/history/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    await loadHistory();
+                } catch (e) {
+                    await loadHistory();
+                }
+            }
+
+            // Sayfa ilk açıldığında auth durumunu ve history bilgisini güncelle
+            (function init() {
+                refreshAuthUI();
+
+                // Enter tuşu ile gönder
+                const userInput = document.getElementById('user-input');
+                const retryInput = document.getElementById('retry-input');
+
+                if (userInput) {
+                    userInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            getRecommendation();
+                        }
+                    });
+                }
+
+                if (retryInput) {
+                    retryInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            getRecommendationRetry();
+                        }
+                    });
+                }
+            })();
+        </script>
+
+</body>
+
+</html>

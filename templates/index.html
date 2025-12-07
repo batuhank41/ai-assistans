@@ -10,14 +10,16 @@
 </head>
 
 <body>
-
-    <!-- Kullanıcı rozeti -->
-    <div id="user-badge" class="user-badge" style="display:none">
+    <div id="user-badge" class="user-badge" style="display:none" onclick="toggleUserMenu()">
         <span class="dot"></span>
+
         <span id="user-badge-name"></span>
+
+        <div id="userDropdown" class="dropdown-content">
+            <button onclick="logout()" class="logout-btn">Çıkış Yap</button>
+        </div>
     </div>
 
-    <!-- Giriş/Kayıt chip'leri -->
     <div id="nav-chips" class="nav-chips" style="display:none">
         <a class="chip" href="/auth">Giriş Yap</a>
         <a class="chip alt" href="/auth">Kayıt Ol</a>
@@ -37,16 +39,16 @@
                         <input type="text" class="search-input" id="user-input" placeholder="Örn: 40000 TL bütçe ile Apple bilgisayar istiyorum...">
                         <div class="search-icon-right">
                             <svg class="search-line-icon" viewBox="0 0 24 24">
-                                <circle cx="11" cy="11" r="7" stroke-width="2" fill="none"/>
-                                <line x1="16" y1="16" x2="21" y2="21" stroke-width="2"/>
+                                <circle cx="11" cy="11" r="7" stroke-width="2" fill="none" />
+                                <line x1="16" y1="16" x2="21" y2="21" stroke-width="2" />
                             </svg>
                         </div>
                     </div>
 
                     <div class="action-row">
                         <button class="submit-btn" id="submit-btn" onclick="getRecommendation()">
-                        <span>Gönder</span>
-                    </button>
+                            <span>Gönder</span>
+                        </button>
 
                         <div class="loading" id="loading" style="display:inline-flex;">
                             <span id="loading-text">AI Bekliyor</span>
@@ -55,7 +57,6 @@
                     </div>
             </section>
 
-            <!-- Hata mesajı -->
             <div class="error" id="error" style="display:none;">
                 <div class="error-icon">!</div>
                 <div class="error-texts">
@@ -64,29 +65,24 @@
                 </div>
             </div>
 
-
-
-
-            <!-- Hata sonrası yeniden giriş alanı -->
             <div id="retry-section" style="display:none; margin-top:12px;">
                 <label id="retry-label" for="retry-input" style="display:block; margin-bottom:6px; font-size:14px;">
-        İsteğini biraz daha detaylandırarak tekrar yaz:
-    </label>
+                    İsteğini biraz daha detaylandırarak tekrar yaz:
+                </label>
 
-                <!-- ÜSTTEKİYLE AYNI BAR -->
                 <div class="search-bar">
                     <input type="text" id="retry-input" class="search-input" placeholder="Örn: 20 bin TL bütçeyle oyun için laptop istiyorum">
                     <div class="search-icon-right">
                         <svg class="search-line-icon" viewBox="0 0 24 24">
-                            <circle cx="11" cy="11" r="7" stroke-width="2" fill="none"/>
-                            <line x1="16" y1="16" x2="21" y2="21" stroke-width="2"/>
+                            <circle cx="11" cy="11" r="7" stroke-width="2" fill="none" />
+                            <line x1="16" y1="16" x2="21" y2="21" stroke-width="2" />
                         </svg>
                     </div>
                 </div>
 
                 <button type="button" class="submit-btn" style="margin-top:12px; width:auto; padding-inline:16px;" onclick="getRecommendationRetry()">
-        Tekrar Dene
-    </button>
+                    Tekrar Dene
+                </button>
             </div>
 
 
@@ -134,7 +130,6 @@
             </div>
             </div>
 
-            <!-- Geçmiş kartı -->
             <div class="history" id="history" style="margin-top:16px; width:100%; max-width:880px;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
                     <h3 style="margin:0;">📜 Geçmiş</h3>
@@ -149,11 +144,9 @@
 
         <script>
             let loadingTimer = null;
-            // Artık misafir için localHistory kullanmıyoruz; sadece yapı bozulmasın diye duruyor.
             let localHistory = [];
             const AUTH_TOKEN_KEY = 'auth_token';
 
-            // Hata tipine göre sayaçlar (2. hata sonrası farklı mesaj için)
             const errorCounters = {
                 parse: 0,
                 budget_only: 0,
@@ -161,10 +154,27 @@
                 category_invalid: 0
             };
 
-            /**
-             * Ana istek fonksiyonu
-             * customInput gelirse onu kullanır, gelmezse ana inputtaki değeri okur.
-             */
+            // --- MENÜ AÇMA/KAPAMA FONKSİYONU ---
+            function toggleUserMenu() {
+                const dropdown = document.getElementById("userDropdown");
+                dropdown.classList.toggle("show");
+            }
+
+            // Sayfada başka bir yere tıklanınca menüyü kapat
+            window.onclick = function(event) {
+                    // Eğer tıklanan yer user-badge veya içindekiler değilse kapat
+                    if (!event.target.closest('#user-badge')) {
+                        var dropdowns = document.getElementsByClassName("dropdown-content");
+                        for (var i = 0; i < dropdowns.length; i++) {
+                            var openDropdown = dropdowns[i];
+                            if (openDropdown.classList.contains('show')) {
+                                openDropdown.classList.remove('show');
+                            }
+                        }
+                    }
+                }
+                // ------------------------------------
+
             async function getRecommendation(customInput = null) {
                 const userInputEl = document.getElementById('user-input');
                 const rawInput = customInput !== null ?
@@ -181,7 +191,6 @@
                 const notice = document.getElementById('notice');
                 const retrySection = document.getElementById('retry-section');
 
-                // Eski hata / notice / retry temizle
                 if (errorBox) errorBox.style.display = 'none';
                 if (errorMsg) errorMsg.textContent = '';
                 if (notice) {
@@ -232,7 +241,6 @@
                         data = {};
                     }
 
-                    // ❌ HATA DURUMU
                     if (!response.ok) {
                         const title = data.error_title || 'Hata';
                         const msg = data.error_message || data.error || 'Bir hata oluştu. Lütfen tekrar dene.';
@@ -259,7 +267,6 @@
                                             'İsteğini farklı bir bütçe ile tekrar yaz:';
                                     }
                                 } else if (errType === 'category_invalid' || errType === 'category_not_found') {
-                                    // Kategori bulunamadı veya geçersiz kategori hatası
                                     if (Array.isArray(data.categories) && data.categories.length > 0) {
                                         retryLabel.textContent =
                                             `Yazdığın kategori sistemde bulunamadı. Lütfen farklı bir kategoride ürün ara.`;
@@ -274,7 +281,6 @@
                             }
 
                             if (retryInput) {
-                                // Yeni input her seferinde boş başlasın, sadece placeholder dursun
                                 retryInput.value = '';
                             }
                             retrySection.style.display = 'block';
@@ -284,11 +290,9 @@
                             errorCounters[errType] = (errorCounters[errType] || 0) + 1;
                         }
 
-                        // ❗ DİKKAT: Artık ana input temizlenmiyor
                         return;
                     }
 
-                    // ✅ BAŞARILI DURUM
                     if (retrySection) retrySection.style.display = 'none';
 
                     const primary = data.recommended ? (data.recommended[0] || null) : null;
@@ -345,7 +349,6 @@
                         altsWrapper.style.display = 'none';
                     }
 
-                    // ✅ GEÇMİŞ KAYDI
                     const entry = {
                         time: new Date().toLocaleString(),
                         timestamp: Math.floor(Date.now() / 1000),
@@ -355,10 +358,8 @@
                     };
 
                     if (token) {
-                        // Giriş yapmış kullanıcı → sunucu tarafı geçmişi yenile
                         await loadHistory();
                     } else {
-                        // Giriş YOK → hiçbir yere kaydetme, sadece boş liste render et
                         renderHistory([], false);
                     }
 
@@ -372,7 +373,6 @@
                 }
             }
 
-            // Hata sonrası açılan inputtan tekrar dene
             async function getRecommendationRetry() {
                 const retryInput = document.getElementById('retry-input');
                 if (!retryInput) return;
@@ -386,7 +386,6 @@
                 const retrySection = document.getElementById('retry-section');
                 if (retrySection) retrySection.style.display = 'none';
 
-                // Ana inputu DEĞİŞTİRMEDEN, sadece bu metinle istek at
                 await getRecommendation(val);
             }
 
@@ -398,7 +397,7 @@
                 if (errorTitle) errorTitle.textContent = title || 'Hata';
                 if (errorMsg) errorMsg.textContent = message;
                 if (errorBox) {
-                    errorBox.style.display = 'flex'; // ✅ flex yap ki ikon + yazı yan yana olsun
+                    errorBox.style.display = 'flex';
                 }
 
                 const result = document.getElementById('result');
@@ -462,62 +461,6 @@
                 }
             }
 
-            async function registerUser() {
-                const u = document.getElementById('auth-username').value.trim();
-                const p = document.getElementById('auth-password').value.trim();
-                const msg = document.getElementById('auth-message');
-                msg.style.display = 'none';
-                msg.textContent = '';
-                try {
-                    const res = await fetch('/register', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username: u,
-                            password: p
-                        })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Kayıt başarısız');
-                    msg.textContent = 'Kayıt başarılı, şimdi giriş yapın.';
-                    msg.style.display = 'block';
-                } catch (e) {
-                    msg.textContent = e.message;
-                    msg.style.display = 'block';
-                }
-            }
-
-            async function loginUser() {
-                const u = document.getElementById('auth-username').value.trim();
-                const p = document.getElementById('auth-password').value.trim();
-                const msg = document.getElementById('auth-message');
-                msg.style.display = 'none';
-                msg.textContent = '';
-                try {
-                    const res = await fetch('/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username: u,
-                            password: p
-                        })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Giriş başarısız');
-                    if (data.token) {
-                        localStorage.setItem(AUTH_TOKEN_KEY, data.token);
-                        await refreshAuthUI();
-                    }
-                } catch (e) {
-                    msg.textContent = e.message;
-                    msg.style.display = 'block';
-                }
-            }
-
             async function logout() {
                 const token = localStorage.getItem(AUTH_TOKEN_KEY);
                 if (token) {
@@ -539,7 +482,6 @@
                 ul.innerHTML = '';
                 if (!list || list.length === 0) {
                     const li = document.createElement('li');
-                    // Misafir de olsa, entry yoksa sadece bilgilendirme
                     li.textContent = isLoggedIn ?
                         'Henüz bir geçmiş kaydı yok.' :
                         'Geçmiş tutulmuyor.';
@@ -570,7 +512,6 @@
             async function loadHistory() {
                 const token = localStorage.getItem(AUTH_TOKEN_KEY);
                 if (!token) {
-                    // Misafir → sunucudan isteme, boş göster
                     renderHistory([], false);
                     return;
                 }
@@ -590,7 +531,6 @@
             async function deleteHistoryItem(ts) {
                 const token = localStorage.getItem(AUTH_TOKEN_KEY);
                 if (!token) {
-                    // Misafir için zaten kayıt yok
                     renderHistory([], false);
                     return;
                 }
@@ -614,7 +554,6 @@
             async function clearHistory() {
                 const token = localStorage.getItem(AUTH_TOKEN_KEY);
                 if (!token) {
-                    // Misafir → hiçbir şey yapma, zaten kayıt yok
                     renderHistory([], false);
                     return;
                 }
@@ -631,11 +570,9 @@
                 }
             }
 
-            // Sayfa ilk açıldığında auth durumunu ve history bilgisini güncelle
             (function init() {
                 refreshAuthUI();
 
-                // Enter tuşu ile gönder
                 const userInput = document.getElementById('user-input');
                 const retryInput = document.getElementById('retry-input');
 

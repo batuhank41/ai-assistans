@@ -7,10 +7,11 @@
     --primary: #e66a14;
     --primary-700: #d55a0a;
     --border: #2d0f05;
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5),
-                   0 2px 4px -2px rgba(0, 0, 0, 0.7);
-    --accent-start: #e66a14;  /* daha koyu turuncu */
-    --accent-end: #f0751e;    /* koyu turuncu, sarıdan uzak */
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.7);
+    --accent-start: #e66a14;
+    /* daha koyu turuncu */
+    --accent-end: #f0751e;
+    /* koyu turuncu, sarıdan uzak */
 }
 
 * {
@@ -21,10 +22,7 @@ body {
     margin: 0;
     font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
     /* Daha koyu sıcak turuncu Hepsiburada arka plan */
-    background: radial-gradient(circle at top,
-                #3b1203 0%,
-                #8b3a0a 25%,
-                #1a0802 100%);
+    background: radial-gradient(circle at top, #3b1203 0%, #8b3a0a 25%, #1a0802 100%);
     background-attachment: fixed;
     color: var(--text);
     min-height: 100vh;
@@ -42,14 +40,14 @@ body::before {
     right: 0;
     bottom: 0;
     /* Daha sönük turuncu glow efektleri - sarı yok */
-    background: radial-gradient(ellipse at top, rgba(230, 106, 20, 0.08) 0%, transparent 40%),
-                radial-gradient(ellipse at center, rgba(139, 58, 10, 0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at bottom, rgba(230, 106, 20, 0.1) 0%, transparent 60%);
+    background: radial-gradient(ellipse at top, rgba(230, 106, 20, 0.08) 0%, transparent 40%), radial-gradient(ellipse at center, rgba(139, 58, 10, 0.05) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(230, 106, 20, 0.1) 0%, transparent 60%);
     pointer-events: none;
     z-index: 0;
 }
 
+
 /* Dış container */
+
 .container {
     width: 100%;
     max-width: 960px;
@@ -62,7 +60,9 @@ body::before {
     z-index: 1;
 }
 
+
 /* Ana kart */
+
 .main-card {
     background: rgba(26, 8, 2, 0.98);
     border-radius: 22px;
@@ -74,13 +74,7 @@ body::before {
     min-height: 310px;
     position: relative;
     /* Daha sönük turuncu glow - profesyonel gölgelendirmeler */
-    box-shadow:
-        0 0 50px rgba(230, 106, 20, 0.2),
-        0 0 80px rgba(240, 117, 30, 0.15),
-        0 0 120px rgba(139, 58, 10, 0.12),
-        0 20px 60px rgba(0, 0, 0, 0.7),
-        inset 0 1px 0 rgba(230, 106, 20, 0.2),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 50px rgba(230, 106, 20, 0.2), 0 0 80px rgba(240, 117, 30, 0.15), 0 0 120px rgba(139, 58, 10, 0.12), 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(230, 106, 20, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .main-card::before {
@@ -91,9 +85,7 @@ body::before {
     z-index: -1;
     filter: blur(40px);
     opacity: 0.2;
-    background: radial-gradient(circle,
-                rgba(230, 106, 20, 0.35),
-                transparent 70%);
+    background: radial-gradient(circle, rgba(230, 106, 20, 0.35), transparent 70%);
 }
 
 .main-card::after {
@@ -105,12 +97,7 @@ body::before {
     bottom: -2px;
     border-radius: 22px;
     /* Daha sönük koyu turuncu çizgiler - sarı yok */
-    background: linear-gradient(135deg, 
-        rgba(139, 58, 10, 0.4) 0%, 
-        rgba(230, 106, 20, 0.3) 25%,
-        rgba(240, 117, 30, 0.25) 50%,
-        rgba(230, 106, 20, 0.2) 75%,
-        rgba(139, 58, 10, 0.15) 100%);
+    background: linear-gradient(135deg, rgba(139, 58, 10, 0.4) 0%, rgba(230, 106, 20, 0.3) 25%, rgba(240, 117, 30, 0.25) 50%, rgba(230, 106, 20, 0.2) 75%, rgba(139, 58, 10, 0.15) 100%);
     z-index: -1;
     filter: blur(10px);
     opacity: 0.5;
@@ -121,11 +108,7 @@ body::before {
     border-radius: 20px;
     border: 1px solid rgba(230, 106, 20, 0.25);
     padding: 20px 18px 16px;
-    box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.7),
-        0 0 25px rgba(230, 106, 20, 0.15),
-        0 0 40px rgba(240, 117, 30, 0.12),
-        inset 0 1px 0 rgba(230, 106, 20, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 25px rgba(230, 106, 20, 0.15), 0 0 40px rgba(240, 117, 30, 0.12), inset 0 1px 0 rgba(230, 106, 20, 0.2);
     backdrop-filter: blur(15px);
     margin-bottom: 16px;
     width: 100%;
@@ -162,7 +145,9 @@ body::before {
     gap: 8px;
 }
 
+
 /* Header */
+
 .header h1 {
     margin: 0;
     font-size: 28px;
@@ -185,7 +170,9 @@ body::before {
     font-size: 14px;
 }
 
+
 /* Input bölümü */
+
 .input-section {
     margin-top: 24px;
 }
@@ -197,7 +184,9 @@ body::before {
     font-size: 14px;
 }
 
+
 /* Search bar */
+
 .search-bar {
     position: relative;
     width: 100%;
@@ -207,21 +196,13 @@ body::before {
     background: #1f0a02;
     display: flex;
     align-items: center;
-    box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.7),
-        0 0 20px rgba(230, 106, 20, 0.1),
-        0 0 30px rgba(240, 117, 30, 0.08),
-        inset 0 1px 0 rgba(230, 106, 20, 0.15);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), 0 0 20px rgba(230, 106, 20, 0.1), 0 0 30px rgba(240, 117, 30, 0.08), inset 0 1px 0 rgba(230, 106, 20, 0.15);
     transition: all 0.3s ease;
 }
 
 .search-bar:focus-within {
     border-color: rgba(230, 106, 20, 0.5);
-    box-shadow: 
-        0 8px 30px rgba(0, 0, 0, 0.8),
-        0 0 35px rgba(230, 106, 20, 0.2),
-        0 0 50px rgba(240, 117, 30, 0.15),
-        inset 0 1px 0 rgba(230, 106, 20, 0.25);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), 0 0 35px rgba(230, 106, 20, 0.2), 0 0 50px rgba(240, 117, 30, 0.15), inset 0 1px 0 rgba(230, 106, 20, 0.25);
 }
 
 .search-input {
@@ -290,7 +271,9 @@ body::before {
     filter: brightness(1.08);
 }
 
+
 /* Gönder butonu */
+
 .submit-btn,
 #submit-btn {
     margin-top: 14px;
@@ -311,12 +294,7 @@ body::before {
     position: relative;
     overflow: hidden;
     /* Çok daha sönük glow - göz yormuyor */
-    box-shadow:
-        0 10px 30px rgba(230, 106, 20, 0.25),
-        0 6px 20px rgba(240, 117, 30, 0.2),
-        0 0 30px rgba(139, 58, 10, 0.15),
-        0 0 50px rgba(230, 106, 20, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(230, 106, 20, 0.25), 0 6px 20px rgba(240, 117, 30, 0.2), 0 0 30px rgba(139, 58, 10, 0.15), 0 0 50px rgba(230, 106, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .submit-btn::before,
@@ -341,21 +319,13 @@ body::before {
     filter: brightness(1.05);
     transform: translateY(-2px);
     /* Daha sönük hover glow */
-    box-shadow:
-        0 14px 40px rgba(230, 106, 20, 0.3),
-        0 10px 28px rgba(240, 117, 30, 0.25),
-        0 0 40px rgba(139, 58, 10, 0.2),
-        0 0 60px rgba(230, 106, 20, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    box-shadow: 0 14px 40px rgba(230, 106, 20, 0.3), 0 10px 28px rgba(240, 117, 30, 0.25), 0 0 40px rgba(139, 58, 10, 0.2), 0 0 60px rgba(230, 106, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .submit-btn:active,
 #submit-btn:active {
     transform: translateY(0) scale(0.98);
-    box-shadow:
-        0 8px 20px rgba(230, 106, 20, 0.25),
-        0 6px 14px rgba(240, 117, 30, 0.2),
-        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 20px rgba(230, 106, 20, 0.25), 0 6px 14px rgba(240, 117, 30, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .submit-btn:disabled,
@@ -378,7 +348,9 @@ body::before {
     opacity: 0.9;
 }
 
+
 /* Genel loading alanı (default) */
+
 .loading {
     margin-top: 0;
     display: none;
@@ -404,7 +376,9 @@ body::before {
     }
 }
 
+
 /* Hata kutusu */
+
 .error {
     margin: 16px auto 0;
     padding: 14px 18px;
@@ -415,10 +389,7 @@ body::before {
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 
-        0 8px 20px rgba(0, 0, 0, 0.6),
-        0 0 15px rgba(255, 100, 100, 0.15),
-        inset 0 1px 0 rgba(230, 106, 20, 0.1);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), 0 0 15px rgba(255, 100, 100, 0.15), inset 0 1px 0 rgba(230, 106, 20, 0.1);
     backdrop-filter: blur(10px);
 }
 
@@ -434,9 +405,7 @@ body::before {
     font-weight: 900;
     font-size: 18px;
     color: #1f0a02;
-    box-shadow: 
-        0 0 10px rgba(255, 80, 80, 0.6),
-        0 0 20px rgba(255, 100, 100, 0.4);
+    box-shadow: 0 0 10px rgba(255, 80, 80, 0.6), 0 0 20px rgba(255, 100, 100, 0.4);
 }
 
 .error-texts {
@@ -457,18 +426,16 @@ body::before {
     color: #d1d5db;
 }
 
+
 /* Sonuç kartı */
+
 .result {
     margin-top: 24px;
     padding: 18px 16px 16px;
     border-radius: 16px;
     border: 1px solid rgba(230, 106, 20, 0.25);
     background: #1a0802;
-    box-shadow: 
-        0 8px 30px rgba(0, 0, 0, 0.7),
-        0 0 25px rgba(230, 106, 20, 0.15),
-        0 0 40px rgba(240, 117, 30, 0.12),
-        inset 0 1px 0 rgba(230, 106, 20, 0.2);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(230, 106, 20, 0.15), 0 0 40px rgba(240, 117, 30, 0.12), inset 0 1px 0 rgba(230, 106, 20, 0.2);
     display: none;
     backdrop-filter: blur(10px);
 }
@@ -478,7 +445,9 @@ body::before {
     font-size: 20px;
 }
 
+
 /* Ürün tablosu */
+
 .product-table {
     width: 100%;
     border-collapse: separate;
@@ -509,13 +478,17 @@ body::before {
     font-weight: 500;
 }
 
+
 /* AI açıklaması satırı */
+
 .ai-description {
     white-space: pre-line;
     line-height: 1.5;
 }
 
+
 /* Link */
+
 .product-link {
     color: var(--accent-end);
     font-weight: 600;
@@ -530,7 +503,9 @@ body::before {
     text-shadow: 0 0 12px rgba(255, 122, 24, 0.5);
 }
 
+
 /* Alternatifler */
+
 .alternatives {
     margin-top: 18px;
     padding-top: 12px;
@@ -549,26 +524,20 @@ body::before {
     border-radius: 16px;
     border: 1px solid rgba(230, 106, 20, 0.2);
     background: #1a0802;
-    box-shadow: 
-        0 8px 30px rgba(0, 0, 0, 0.7),
-        0 0 20px rgba(230, 106, 20, 0.12),
-        0 0 35px rgba(240, 117, 30, 0.08),
-        inset 0 1px 0 rgba(230, 106, 20, 0.15);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 20px rgba(230, 106, 20, 0.12), 0 0 35px rgba(240, 117, 30, 0.08), inset 0 1px 0 rgba(230, 106, 20, 0.15);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
 }
 
 .alt-card:hover {
     border-color: rgba(230, 106, 20, 0.35);
-    box-shadow: 
-        0 10px 35px rgba(0, 0, 0, 0.8),
-        0 0 30px rgba(230, 106, 20, 0.18),
-        0 0 45px rgba(240, 117, 30, 0.15),
-        inset 0 1px 0 rgba(230, 106, 20, 0.2);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.8), 0 0 30px rgba(230, 106, 20, 0.18), 0 0 45px rgba(240, 117, 30, 0.15), inset 0 1px 0 rgba(230, 106, 20, 0.2);
     transform: translateY(-2px);
 }
 
+
 /* Responsive */
+
 @media (max-width: 768px) {
     .container {
         padding: 16px;
@@ -597,9 +566,7 @@ body::before {
     color: #ffe8d3;
     display: none;
     font-size: 13px;
-    box-shadow: 
-        0 4px 12px rgba(0, 0, 0, 0.5),
-        0 0 10px rgba(230, 106, 20, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(230, 106, 20, 0.12);
 }
 
 .elapsed-time {
@@ -608,46 +575,9 @@ body::before {
     font-size: 12px;
 }
 
-.user-badge {
-    position: fixed;
-    top: 12px;
-    right: 16px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 9999px;
-    background: rgba(26, 8, 2, 0.98);
-    border: 1px solid rgba(230, 106, 20, 0.25);
-    box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.7),
-        0 0 15px rgba(230, 106, 20, 0.15),
-        0 0 25px rgba(240, 117, 30, 0.12);
-    color: var(--text);
-    font-size: 13px;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
-
-.user-badge:hover {
-    border-color: rgba(230, 106, 20, 0.4);
-    box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.8),
-        0 0 20px rgba(230, 106, 20, 0.2),
-        0 0 30px rgba(240, 117, 30, 0.15);
-    transform: translateY(-1px);
-}
-
-.user-badge .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
-    box-shadow: 0 0 8px rgba(230, 106, 20, 0.4);
-}
 
 /* Gönder + Loading satırı */
+
 .action-row {
     margin-top: 10px;
     width: 100%;
@@ -658,12 +588,16 @@ body::before {
     position: relative;
 }
 
+
 /* Gönder butonunu satır içinde daralt */
+
 .action-row .submit-btn {
     width: auto;
 }
 
+
 /* Gönder butonunun hemen altındaki AI loading alanı */
+
 #loading {
     position: static;
     display: inline-flex;
@@ -713,10 +647,7 @@ body::before {
     border-radius: 12px;
     background: rgba(26, 8, 2, 0.98);
     border: 1px solid rgba(230, 106, 20, 0.25);
-    box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.7),
-        0 0 15px rgba(230, 106, 20, 0.12),
-        0 0 25px rgba(240, 117, 30, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 15px rgba(230, 106, 20, 0.12), 0 0 25px rgba(240, 117, 30, 0.1);
     color: var(--text);
     font-size: 13px;
     text-decoration: none;
@@ -726,10 +657,7 @@ body::before {
 
 .chip:hover {
     border-color: rgba(230, 106, 20, 0.4);
-    box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.8),
-        0 0 20px rgba(230, 106, 20, 0.18),
-        0 0 30px rgba(240, 117, 30, 0.15);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 0 0 20px rgba(230, 106, 20, 0.18), 0 0 30px rgba(240, 117, 30, 0.15);
     transform: translateY(-1px);
 }
 
@@ -737,32 +665,23 @@ body::before {
     background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
     color: white;
     border: none;
-    box-shadow: 
-        0 6px 20px rgba(230, 106, 20, 0.3),
-        0 0 20px rgba(240, 117, 30, 0.25),
-        0 0 35px rgba(139, 58, 10, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 20px rgba(230, 106, 20, 0.3), 0 0 20px rgba(240, 117, 30, 0.25), 0 0 35px rgba(139, 58, 10, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .chip.alt:hover {
-    box-shadow: 
-        0 8px 25px rgba(230, 106, 20, 0.4),
-        0 0 25px rgba(240, 117, 30, 0.3),
-        0 0 45px rgba(139, 58, 10, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 25px rgba(230, 106, 20, 0.4), 0 0 25px rgba(240, 117, 30, 0.3), 0 0 45px rgba(139, 58, 10, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     filter: brightness(1.05);
 }
 
+
 /* Küçük buton varyasyonu (auth sayfası) */
+
 .btn-sm {
     width: auto !important;
     padding: 8px 12px !important;
     font-size: 13px !important;
     border-radius: 10px !important;
-    box-shadow: 
-        0 6px 16px rgba(230, 106, 20, 0.25),
-        0 4px 12px rgba(240, 117, 30, 0.2),
-        0 0 10px rgba(139, 58, 10, 0.15) !important;
+    box-shadow: 0 6px 16px rgba(230, 106, 20, 0.25), 0 4px 12px rgba(240, 117, 30, 0.2), 0 0 10px rgba(139, 58, 10, 0.15) !important;
 }
 
 .back-btn {
@@ -777,10 +696,7 @@ body::before {
     border-radius: 9999px;
     background: rgba(26, 8, 2, 0.98);
     border: 1px solid rgba(230, 106, 20, 0.25);
-    box-shadow: 
-        0 4px 15px rgba(0, 0, 0, 0.7),
-        0 0 15px rgba(230, 106, 20, 0.12),
-        0 0 25px rgba(240, 117, 30, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 15px rgba(230, 106, 20, 0.12), 0 0 25px rgba(240, 117, 30, 0.1);
     color: #f0751e;
     text-decoration: none;
     font-size: 18px;
@@ -790,10 +706,137 @@ body::before {
 
 .back-btn:hover {
     border-color: rgba(230, 106, 20, 0.4);
-    box-shadow: 
-        0 6px 20px rgba(0, 0, 0, 0.8),
-        0 0 20px rgba(230, 106, 20, 0.18),
-        0 0 30px rgba(240, 117, 30, 0.15);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 0 0 20px rgba(230, 106, 20, 0.18), 0 0 30px rgba(240, 117, 30, 0.15);
     color: var(--accent-start);
     transform: translateY(-1px);
+}
+
+
+/* --- SAĞ ÜST KULLANICI MENÜSÜ VE LOGOUT BUTONU --- */
+
+
+/* 1. KULLANICI ROZETİ (Yayvan / Geniş Hap Görünümü) */
+
+.user-badge {
+    cursor: pointer;
+    user-select: none;
+    /* Konum */
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    /* GÖRÜNÜM AYARLARI */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* İçindeki yazıyı ve noktayı tam ortalar */
+    /* --- YAYVANLIK AYARLARI BURADA --- */
+    gap: 8px;
+    padding: 8px 20px;
+    /* Yanlardan 30px boşluk (Enine genişletir) */
+    min-width: 100px;
+    /* İsim kısa olsa bile kutu en az bu kadar geniş olur */
+    /* -------------------------------- */
+    font-size: 14px;
+    font-weight: 500;
+    /* Renkler */
+    color: var(--text);
+    background-color: #1a0802;
+    border: 1px solid rgba(230, 106, 20, 0.25);
+    /* Kenarları Yuvarlatma (Köşeli olmasın diye) */
+    border-radius: 50px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease;
+}
+
+.user-badge:hover {
+    border-color: rgba(230, 106, 20, 0.6);
+    box-shadow: 0 0 15px rgba(230, 106, 20, 0.2);
+    transform: translateY(-1px);
+}
+
+
+/* Turuncu Nokta */
+
+.user-badge .dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    background-color: #e66a14;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(230, 106, 20, 0.8);
+    flex-shrink: 0;
+    /* Kutunun küçülüp noktayı ezmesini engeller */
+}
+
+
+/* 2. GİRİŞ/KAYIT BUTONLARI (Giriş Yapılmamışsa) */
+
+.nav-chips {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+
+/* Açılır Menü Kutusu */
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    /* Rozetin tam altına */
+    margin-top: 10px;
+    /* Biraz boşluk */
+    /* SENİN RENK PALETİN */
+    background: rgba(26, 8, 2, 0.98);
+    /* --card rengi */
+    border: 1px solid rgba(230, 106, 20, 0.25);
+    /* --border rengi */
+    border-radius: 16px;
+    /* Glow Efektleri */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(230, 106, 20, 0.15), inset 0 1px 0 rgba(230, 106, 20, 0.1);
+    backdrop-filter: blur(15px);
+    min-width: 150px;
+    overflow: hidden;
+    z-index: 1001;
+}
+
+
+/* Menü açılınca görünür yapan sınıf */
+
+.show {
+    display: block;
+}
+
+
+/* Çıkış Yap Butonu */
+
+.logout-btn {
+    width: 100%;
+    text-align: left;
+    /* Yazı solda olsun */
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    /* Font ayarları */
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    /* Renk: Açık kırmızı */
+    color: #ff6b6b;
+    transition: all 0.2s ease;
+}
+
+
+/* Butonun üzerine gelince */
+
+.logout-btn:hover {
+    background: rgba(230, 106, 20, 0.1);
+    /* Hafif turuncu zemin */
+    color: #ff8888;
+    /* Daha parlak kırmızı */
 }

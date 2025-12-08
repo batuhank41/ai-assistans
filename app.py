@@ -145,6 +145,19 @@ def extract_category_dynamically(user_text: str, all_products: List[Dict[str, An
             
     if max_match_count > 0:
         return best_category
+    t = _normalize_tr(user_text)
+    syn_map = {
+        "bilgisayar": ["bilgisayar","laptop","notebook","pc","dizustu","dizüstü","tasinabilir","taşınabilir"],
+        "telefon": ["telefon","cep","smartphone","android","ios","phone"],
+        "kulaklık": ["kulaklik","kulaklık","earphone","headphone","headset","buds"],
+        "monitor": ["monitor","monitör","ekran"],
+        "akıllı saat": ["akilli saat","akıllı saat","watch","saat"]
+    }
+    words = set(re.findall(r"[a-z0-9ğĞüÜşŞıİöÖçÇ]+", t))
+    for cat, kws in syn_map.items():
+        for k in kws:
+            if k in words or k in t:
+                return cat
     return None
 
 
@@ -235,6 +248,15 @@ def _looks_like_only_existence_query(text: str) -> bool:
     if re.search(r"\d", t): return False
     return True
 
+def _detect_unsupported_category(text: str) -> bool:
+    t = _normalize_tr(text or "")
+    unsupported = [
+        "buzdolabi","buzdolabı","beyaz esya","beyaz eşya","camasir","çamaşır",
+        "bulasik","bulaşık","firin","fırın","ocak","klima","mikrodalga","ankastre","takim","takımı","set"
+    ]
+    base = ["laptop","bilgisayar","notebook","pc","telefon","monitor","kulaklik","kulaklık","akilli saat","akıllı saat","watch","saat"]
+    return any(k in t for k in unsupported) and not any(b in t for b in base)
+
 
 def normalize_price(raw: Any) -> Optional[int]:
     if raw is None: return None
@@ -321,7 +343,7 @@ def ai_understand_input(user_text: str, products: List[Dict[str, Any]]) -> Dict[
         if val < 10000 and val != budget:
             required_numbers.append(n)
 
-    force_category_invalid = _looks_like_only_existence_query(user_text)
+    force_category_invalid = _looks_like_only_existence_query(user_text) or _detect_unsupported_category(user_text)
 
     return {
         "budget": budget,
@@ -642,6 +664,14 @@ def recommend():
                 "ask_new_input": True
             }), 500
 
+        if _detect_unsupported_category(user_input):
+            return jsonify({
+                "error_title": "Kategori Desteklenmiyor",
+                "error_message": "Bu istek mevcut kategorilerle eşleşmiyor.",
+                "error_type": "category_invalid",
+                "ask_new_input": True
+            }), 400
+
         parsed = ai_understand_input(user_input, products)
         budget = parsed.get("budget")
         budget_range = parsed.get("budget_range")
@@ -669,14 +699,15 @@ def recommend():
         # find_best_products'taki fallback davranışını buna göre güncelleyebilirsin.
         
         if (
-       all_cats and
-             word_tokens and
-             usage is None and
+            all_cats and
+            word_tokens and
+            usage is None and
             brand is None and
-             price_pref is None and
-             not budget_only and
-             (force_category_invalid or category is None)
-         ):
+            price_pref is None and
+            not budget_only and
+            not parsed.get("spec_filters") and
+            (force_category_invalid or category is None)
+        ):
              return jsonify({
                  "error_title": "Kategori Desteklenmiyor",
                  "error_message": (

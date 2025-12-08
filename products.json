@@ -166,7 +166,7 @@
         "name": "Apple iPhone 16 Pro Max",
         "brand": "Apple",
         "category": "telefon",
-        "price": 119000,
+        "price": 123999,
         "features": ["A18 Pro çip", "6.9 inç xdr ekran", "512GB depolama"],
         "usage_tags": ["günlük", "iş"],
         "url": "https://www.hepsiburada.com/iphone-16-pro-max-512gb-siyah-p-HBCV00006Y4HC9"
@@ -230,6 +230,37 @@
         "features": ["Güneş Enerjisi Şarjı", "Askeri dayanıklılık", "GPS, Çoklu spor modları"],
         "usage_tags": ["günlük", "spor"],
         "url": "https://www.hepsiburada.com/garmin-fenix-7-pro-solar-edition-slate-gri-siyah-pm-HBC000094PKGC"
+    },
+    {
+        "id": 24,
+        "name": "Apple Airpods 4",
+        "brand": "Apple",
+        "category": "kulaklık",
+        "price": 7400,
+        "features": ["Aktif gürültü önleme", "30 saat pil", "H2 Çip"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/apple-airpods-4-aktif-gurultu-onleme-ozellikli-mxp93tu-a-pm-HBC0000700VEQ"
+    },
+    {
+        "id": 25,
+        "name": "Apple Watch Series 11",
+        "brand": "Apple",
+        "category": "akıllı saat",
+        "price": 20199,
+        "features": ["Su Geçirmez", "24 Saat pil ömrü", "GPS"],
+        "usage_tags": ["günlük", "spor", "iş"],
+        "url": "https://www.hepsiburada.com/apple-watch-series-11-gps-42-mm-simsiyah-aluminyum-kasa-ve-siyah-spor-kordon-s-m-p-HBCV0000A11NIL"
+    },
+    {
+        "id": 26,
+        "name": "Apple iPhone 17 Pro Max 256 GB",
+        "brand": "Apple",
+        "category": "telefon",
+        "price": 118999,
+        "features": ["A19 Pro çip", "6.9 inç xdr ekran", "256GB depolama"],
+        "usage_tags": ["günlük", "iş"],
+        "url": "https://www.hepsiburada.com/apple-iphone-17-pro-max-256-gb-kozmik-turuncu-p-HBCV00009Z3Z8C?magaza=Hepsiburada"
     }
+
 
 ]

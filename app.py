@@ -1024,25 +1024,25 @@ def recommend():
         # ======================================================
         # Eğer tekrar aktif etmek istersen, aşağıdaki bloğu açıp
         # find_best_products'taki fallback davranışını buna göre güncelleyebilirsin.
-        #
-        # if (
-        #     all_cats and
-        #     word_tokens and
-        #     usage is None and
-        #     brand is None and
-        #     price_pref is None and
-        #     not budget_only and
-        #     (force_category_invalid or category is None)
-        # ):
-        #     return jsonify({
-        #         "error_title": "Kategori Desteklenmiyor",
-        #         "error_message": (
-        #             "Yazdığın istekteki ürün kategorisi şu anda sistemde tanımlı değil. "
-        #             "Desteklenen kategoriler: " + ", ".join(all_cats)
-        #         ),
-        #         "error_type": "category_invalid",
-        #         "ask_new_input": True
-        #     }), 400
+        
+        if (
+       all_cats and
+             word_tokens and
+             usage is None and
+            brand is None and
+             price_pref is None and
+             not budget_only and
+             (force_category_invalid or category is None)
+         ):
+             return jsonify({
+                 "error_title": "Kategori Desteklenmiyor",
+                 "error_message": (
+                     "Aradığın ürün kategorisi şu anda sistemde tanımlı değil. "
+                    
+                ),
+                "error_type": "category_invalid",
+                "ask_new_input": True
+         }), 400
 
         # ======================================================
         #  B) GERÇEKTEN HİÇBİR ŞEY ANLAŞILMADI (parse error)
@@ -1059,7 +1059,7 @@ def recommend():
                 "error_title": "İstek Anlaşılamadı",
                 "error_message": (
                     "Ne aradığını anlayamadım. Lütfen ürün kategorisi "
-                    "(ör. laptop, telefon, monitör) ve mümkünse kullanım amacını belirt."
+                    "ve mümkünse kullanım amacını belirt."
                 ),
                 "error_type": "parse_error",
                 "ask_new_input": True

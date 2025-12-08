@@ -513,24 +513,67 @@ def _get_all_categories(products: List[Dict[str, Any]]) -> List[str]:
             seen_norm.add(norm)
             cats.append(str(c))
     return cats
+# Bu fonksiyonu _get_all_categories fonksiyonunun hemen altına yapıştır:
 
+def extract_category_from_products(user_text: str, all_products: List[Dict[str, Any]]) -> Optional[str]:
+    """
+    Kullanıcının girdiği kelimeyi (örn: 'macbook') ürün listesinde arar.
+    Eğer ürün adında bu kelime geçiyorsa, o ürünün kategorisini döndürür.
+    Böylece elle liste tanımlamana gerek kalmaz.
+    """
+    if not user_text or not all_products:
+        return None
+
+    # Kullanıcı metnini temizle ve kelimelere ayır
+    norm_text = _normalize_tr(user_text)
+    words = re.findall(r"[a-z0-9]+", norm_text)
+
+    for product in all_products:
+        p_name = _normalize_tr(product.get("name", ""))
+        p_brand = _normalize_tr(product.get("brand", ""))
+        p_cat = product.get("category")
+
+        if not p_cat:
+            continue
+
+        # Kelimeleri tek tek kontrol et
+        for w in words:
+            # En az 3 harfli kelimelere bak ( 've', 'de' gibi ekleri atlamak için)
+            if len(w) < 3:
+                continue
+            
+            # Eğer kelime ürün adında veya markasında geçiyorsa kategoriyi kap!
+            if w in p_name or w in p_brand:
+                return p_cat
+
+    return None
 
 def ai_understand_input(
     user_text: str,
     products: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
-    Kullanıcı isteğini analiz eder. (Kategori ve bütçe için artık sadece local mantık kullanılıyor.)
+    Kullanıcı isteğini analiz eder.
+    Artık teknik özellikleri (i5, 16gb, ssd vs.) de algılar ve filtreye ekler.
     """
     user_text = user_text or ""
+    # Regex işlemi için metni normalize et
+    t_lower = _normalize_tr(user_text)
 
     budget = extract_budget(user_text)
     budget_range = extract_budget_range(user_text)
+    
+    # 1. Önce genel listeye bak (Laptop, Telefon vb. yazdı mı?)
     category = extract_product_category(user_text)
+
+    # 2. Eğer bulamadıysan, YENİ FONKSİYONU ÇAĞIR ve JSON'a bak
+    if not category:
+        category = extract_category_from_products(user_text, products)
+
     usage = _extract_usage(user_text)
     brand = extract_brand(user_text)
     price_pref = _extract_price_pref(user_text)
-
+    
     budget_only = False
     if budget is not None and not budget_range:
         budget_only = _is_budget_only(user_text)
@@ -538,14 +581,20 @@ def ai_understand_input(
     if budget is None and budget_range:
         budget = (budget_range[0] + budget_range[1]) // 2
 
-    categories = _get_all_categories(products)
+    # --- YENİ EKLENEN KISIM: TEKNİK ÖZELLİK FİLTRESİ ---
+    # "i5", "ryzen 5", "16gb", "rtx 3060", "ssd" gibi terimleri yakalar.
+    spec_regex = r"(?:^|\s)(i[3579]|ryzen\s?\d*|rtx\s?\d*|gtx\s?\d*|\d+gb|\d+tb|ssd)(?:$|\s)"
+    found_specs = re.findall(spec_regex, t_lower)
+    
+    # Boşlukları temizle (örn: "ryzen 5" -> "ryzen5" veya olduğu gibi bırakabiliriz,
+    # ama arama yaparken kolaylık olsun diye strip yapıyoruz)
+    spec_filters = [s.strip().replace(" ", "") for s in found_specs]
+    # ----------------------------------------------------
 
-    # "beyaz eşya var m", "elbiseler var mı" gibi
-    # sadece "X var mı?" tipini yakala → bunlarda ek kategori tahmini yapma
+    categories = _get_all_categories(products)
     force_category_invalid = _looks_like_only_existence_query(user_text)
 
-    # Kategori yoksa, ürün kategorileri üzerinden ekstra fuzzy
-    # (ama existence query ise bunu bile yapmıyoruz)
+    # Kategori yoksa fuzzy search (Burası eski kodun aynısı)
     if category is None and categories and not force_category_invalid:
         norm_t = _normalize_tr(user_text)
         words = re.findall(r"[a-zA-ZğĞüÜşŞıİöÖçÇ]+", norm_t)
@@ -563,7 +612,6 @@ def ai_understand_input(
         if best_cat and best_score >= 0.7:
             category = best_cat
 
-    # Ekstra OpenAI kategori tahmini yok; hız ve rate limit için sadece local mantık kullanılıyor.
     return {
         "budget": budget,
         "budget_range": budget_range,
@@ -573,8 +621,8 @@ def ai_understand_input(
         "price_pref": price_pref,
         "budget_only": budget_only,
         "force_category_invalid": force_category_invalid,
+        "spec_filters": spec_filters  # <-- YENİ EKLENEN ANAHTAR
     }
-
 
 # ============================================================
 #  PUANLAMA, FİYAT BANDI ve AI AÇIKLAMA
@@ -690,104 +738,73 @@ def find_best_products(
     category: Optional[str],
     brand: Optional[str] = None,
     usage: Optional[str] = None,
-    budget_range: Optional[Tuple[int, int]] = None
-) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """
-    Ana seçim motoru.
-    Kullanıcı kategori yazsa bile, o kategoride ürün yoksa
-    kategoriyi yok sayıp tüm ürünler içinden en iyi eşleşmeyi bulur.
-    """
-    products = products or []
-
-    # 1) Başlangıçta tüm ürünler aday
+    budget_range: Optional[Tuple[int, int]] = None,
+    spec_filters: List[str] = None  # <-- Yeni parametre
+):
     candidates = products[:]
-
-    # 2) Kategoriye göre filtrele, ama *boş kalırsa* fallback olarak tüm ürünleri kullan
+    
+    # 1. Kategori Filtresi
     if category:
-        cat_filtered = [
-            p for p in candidates
-            if _same_category(p.get("category", ""), category)
-        ]
-        if cat_filtered:
-            candidates = cat_filtered
-        else:
-            # Kullanıcı elbise / beyaz eşya yazsa bile,
-            # yine de tüm ürünler içinden en yakınları bulacağız.
-            candidates = products[:]
+        filtered = [p for p in candidates if _same_category(p.get("category"), category)]
+        if filtered: candidates = filtered
 
-    # 3) Marka varsa, marka filtresi
+    # 2. Marka Filtresi
     if brand:
-        bnorm = _normalize_tr(brand)
-        candidates = [
-            p for p in candidates
-            if _normalize_tr(p.get("brand", "")) == bnorm
-        ]
+        candidates = [p for p in candidates if _normalize_tr(p.get("brand")) == _normalize_tr(brand)]
 
-    if not candidates:
-        return None, [], []
+    # 3. (YENİ) TEKNİK ÖZELLİK FİLTRESİ (i5, 16gb vs.)
+    if spec_filters:
+        for spec in spec_filters:
+            # Her bir özellik (örn: "i5") ürünün isminde VEYA özelliklerinde geçiyor mu?
+            filtered_by_spec = []
+            for p in candidates:
+                # Ürün bilgilerini tek bir metin haline getirip arama yapıyoruz
+                p_text = (
+                    _normalize_tr(p.get("name", "")) + " " + 
+                    " ".join([_normalize_tr(f) for f in p.get("features", [])])
+                )
+                
+                # "ryzen 5" kullanıcısı için "ryzen5" veya "ryzen 5" araması
+                if spec in p_text.replace(" ", "") or spec in p_text:
+                    filtered_by_spec.append(p)
+            
+            # Eğer bu özelliği sağlayan ürün varsa listeyi daralt
+            # (Hiç ürün yoksa filtreyi yoksay ki liste boşalmasın)
+            if filtered_by_spec:
+                candidates = filtered_by_spec
 
-    cleaned: List[Dict[str, Any]] = []
-    for p in candidates:
-        price_val = normalize_price(p.get("price"))
-        if price_val is None:
-            price_val = 0
-        p["_price"] = price_val
-        cleaned.append(p)
-    candidates = cleaned
+    if not candidates: return None, [], []
 
-    mn, mx = _price_range_for(candidates, category)
+    # Fiyat Temizliği
+    for p in candidates: p["_price"] = normalize_price(p.get("price")) or 0
 
-    if budget_range and isinstance(budget_range, tuple) and len(budget_range) == 2:
-        center = (budget_range[0] + budget_range[1]) // 2
-    elif budget is not None:
-        center = budget
+    # Fiyat Bandı
+    if budget_range:
+        low, high = budget_range
+    elif budget:
+        low, high = budget * 0.7, budget * 1.3
     else:
-        center = (mn + mx) // 2 if (mn or mx) else 0
+        low, high = 0, float('inf')
 
-    base = center
+    band_filtered = [p for p in candidates if low <= p["_price"] <= high]
+    
+    # Puanlama
+    scored = []
+    target = budget or (low+high)/2
+    if target == float('inf') or target == 0: 
+        target = 1  # 0'a bölme hatası olmasın
 
-    if budget_range and isinstance(budget_range, tuple) and len(budget_range) == 2:
-        rl, rh = budget_range
-        low = max(mn, min(rl, rh))
-        high = min(mx, max(rl, rh))
-        if low <= high:
-            band_filtered = [
-                p for p in candidates
-                if low <= p.get("_price", 0) <= high
-            ]
-        else:
-            band_filtered = []
-    else:
-        if budget is None:
-            band_filtered = []
-        else:
-            low = max(mn, center - 5000)
-            high = min(mx, center + 2000)
-            if low <= high:
-                band_filtered = [
-                    p for p in candidates
-                    if low <= p.get("_price", 0) <= high
-                ]
-            else:
-                band_filtered = []
-
-    scored: List[Tuple[Dict[str, Any], int, int, int]] = []
     for p in candidates:
-        price = p.get("_price", 0)
-        diff = abs(price - base) if base is not None else 0
-        over = 1 if (budget is not None and price > budget) else 0
+        diff = abs(p["_price"] - target)
         uscore = _usage_score(p, usage)
-        scored.append((p, diff, over, uscore))
-
-    scored.sort(key=lambda x: (x[1], x[2], -x[3]))
+        scored.append((p, diff, -uscore))
+        
+    scored.sort(key=lambda x: (x[1], x[2]))
     ordered = [x[0] for x in scored]
-
-    if band_filtered:
-        band_sorted = [p for p in ordered if p in band_filtered]
-        top = band_sorted[0] if band_sorted else ordered[0]
-    else:
-        top = ordered[0] if ordered else None
-
+    
+    band_sorted = [p for p in ordered if p in band_filtered]
+    top = band_sorted[0] if band_sorted else ordered[0] if ordered else None
+    
     return top, ordered, band_filtered
 
 

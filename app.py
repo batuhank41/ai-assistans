@@ -28,23 +28,17 @@ if not _API_KEY:
 client = OpenAI(api_key=_API_KEY)
 
 # Ürün açıklamaları için basit bellek içi cache
-# Key: (name, brand, price, tuple(features), usage, budget_band)
 DESCRIPTION_CACHE: Dict[Any, str] = {}
 
 
 def _openai_chat(
     messages: List[Dict[str, str]],
-    max_tokens: int = 200,
-    temperature: float = 0.4,
+    max_tokens: int = 250,
+    temperature: float = 0.3,
     retries: int = 1
 ) -> str:
-    """
-    OpenAI Responses API için basit wrapper.
-    messages -> tek bir prompt stringine dönüştürülür.
-    Hız için sadece 1 deneme yapar; rate limit olursa üst seviyede fallback kullanılır.
-    """
+    """OpenAI API Wrapper"""
     last_err: Optional[Exception] = None
-
     parts: List[str] = []
     for m in messages:
         role = m.get("role", "user")
@@ -60,7 +54,7 @@ def _openai_chat(
     for _ in range(retries):
         try:
             resp = client.responses.create(
-                model="gpt-4.1-mini",  # hızlı mini model
+                model="gpt-4o-mini", # Model ismini güncelledik (4.1-mini yok, 4o-mini veya 3.5-turbo kullan)
                 input=prompt,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
@@ -69,18 +63,12 @@ def _openai_chat(
             return text.strip()
         except Exception as e:
             msg = str(e)
-            # Rate limit / 429 → üst seviyede fallback'e izin ver
-            if (
-                "rate_limit_exceeded" in msg
-                or "429" in msg
-                or "RateLimitError" in msg
-            ):
-                print("OpenAI HATASI (_openai_chat): RATE LIMIT - fallback kullanılacak.", repr(e))
+            if "rate_limit" in msg or "429" in msg:
+                print("OpenAI HATASI: RATE LIMIT.")
                 raise RuntimeError("openai_rate_limited")
-            print("OpenAI HATASI (_openai_chat):", repr(e))
+            print("OpenAI HATASI:", repr(e))
             last_err = e
             break
-
     raise RuntimeError("openai_unavailable") from last_err
 
 
@@ -89,18 +77,9 @@ def _openai_chat(
 # ============================================================
 
 def load_products() -> List[Dict[str, Any]]:
-    """
-    products.json dosyasını her çağrıldığında okur.
-    Böylece yeni eklenen ürünler için sunucuyu yeniden başlatmaya gerek kalmaz.
-    JSON yapısı:
-      - Düz liste   -> [ {...}, {...} ]
-      - veya        -> { "products": [ {...}, {...} ] }
-    ikisini de destekler.
-    """
     try:
         with open("products.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-
         if isinstance(data, dict):
             if "products" in data and isinstance(data["products"], list):
                 return data["products"]
@@ -113,462 +92,209 @@ def load_products() -> List[Dict[str, Any]]:
         else:
             return []
     except FileNotFoundError:
-        print("UYARI: products.json bulunamadı, boş liste döndürüldü.")
+        print("UYARI: products.json bulunamadı.")
         return []
     except Exception as e:
-        print("products.json okunurken hata:", repr(e))
+        print("products.json hatası:", repr(e))
         return []
 
 
 def _normalize_tr(s: Any) -> str:
-    """
-    Türkçe karakterleri sadeleştirip lower-case'e çevirir.
-    Baştaki/sondaki boşlukları kırpar.
-    """
-    mapping = {
-        "ö": "o", "Ö": "o",
-        "ü": "u", "Ü": "u",
-        "ş": "s", "Ş": "s",
-        "ı": "i", "İ": "i",
-        "ğ": "g", "Ğ": "g",
-        "ç": "c", "Ç": "c",
-    }
+    mapping = {"ö": "o", "Ö": "o", "ü": "u", "Ü": "u", "ş": "s", "Ş": "s", "ı": "i", "İ": "i", "ğ": "g", "Ğ": "g", "ç": "c", "Ç": "c"}
     s = "" if s is None else str(s).strip()
     return "".join(mapping.get(ch, ch).lower() for ch in s)
 
 
 def _same_category(cat1: Any, cat2: Any) -> bool:
-    """
-    Kategori kıyasını normalize ederek yapar.
-    Örn: 'monitör' == 'monitor' → True
-    """
-    if not cat1 or not cat2:
-        return False
+    if not cat1 or not cat2: return False
     return _normalize_tr(cat1) == _normalize_tr(cat2)
 
 
-def extract_product_category(text: str) -> Optional[str]:
+def extract_category_dynamically(user_text: str, all_products: List[Dict[str, Any]]) -> Optional[str]:
     """
-    Kullanıcı metninden kategori tahmini yapar.
-    Yazım hatalarına karşı difflib ile toleranslıdır.
-    (Buradaki map sadece temel kategoriler, ana mantık ürün kategorileri ile genişletiliyor.)
+    EN AKILLI KATEGORİ BULUCU (Apple Watch sorununu çözen yer)
+    Kullanıcının yazdığı kelimeler ile veritabanındaki ürün isimlerini kıyaslar.
+    Manuel listeye gerek duymaz.
     """
-    categories_map = {
-        "bilgisayar": [
-            "bilgisayar", "laptop", "notebook", "pc",
-            "masaüstü", "masaustu"
-        ],
-        "telefon": [
-            "telefon", "cep telefonu", "mobile",
-            "smartphone", "android", "ios", "phone"
-        ],
-        "kulaklık": [
-            "kulaklık", "kulaklik", "headphone",
-            "earphone", "headset"
-        ],
-        "monitor": [
-            "monitor", "monitör", "monitoer", "ekran"
-        ],
-    }
+    if not user_text or not all_products:
+        return None
 
-    t = (text or "").lower()
-    norm_t = _normalize_tr(text)
-    words = re.findall(r"[a-zA-ZğĞüÜşŞıİöÖçÇ]+", t)
-    norm_words = [_normalize_tr(w) for w in words]
+    user_text = _normalize_tr(user_text)
+    user_words = set(re.findall(r"[a-zA-Z0-9ğĞüÜşŞıİöÖçÇ]+", user_text))
+    
+    stopwords = {"bana", "lazim", "istiyorum", "var", "mi", "bir", "tane", "alcam", "fiyat"}
+    user_words = {w for w in user_words if w not in stopwords and len(w) >= 2}
 
-    def score_for(keywords: List[str]) -> Tuple[int, bool]:
-        score = 0
-        direct = False
-        for k in keywords:
-            if k in t:
-                score += 3
-                direct = True
+    best_category = None
+    max_match_count = 0
 
-            nk = _normalize_tr(k)
-            if nk in norm_t:
-                score += 2
+    for product in all_products:
+        p_name = _normalize_tr(product.get("name", ""))
+        p_cat = product.get("category")
+        if not p_cat: continue
 
-            for nw in norm_words:
-                if nk in nw or nw in nk:
-                    score += 2
-                if len(nk) >= 3 and len(nw) >= 3:
-                    ratio = difflib.SequenceMatcher(None, nw, nk).ratio()
-                    if ratio >= 0.82:
-                        score += 1
-        return score, direct
+        product_words = set(re.findall(r"[a-zA-Z0-9ğĞüÜşŞıİöÖçÇ]+", p_name))
+        
+        # Kesişim sayısı (Örn: "Apple" ve "Watch" -> 2 kelime tuttu)
+        common_words = user_words.intersection(product_words)
+        match_count = len(common_words)
 
-    best_cat: Optional[str] = None
-    best_score = 0
-    best_direct = False
-
-    for c, kws in categories_map.items():
-        s, d = score_for(kws)
-        if s > best_score or (s == best_score and d and not best_direct):
-            best_cat = c
-            best_score = s
-            best_direct = d
-
-    return best_cat
+        if match_count > max_match_count:
+            max_match_count = match_count
+            best_category = p_cat
+            
+    if max_match_count > 0:
+        return best_category
+    return None
 
 
 def extract_brand(text: str) -> Optional[str]:
     """
-    Kullanıcı metninden marka bilgisini çıkarır.
-    products.json içindeki brand alanlarından dinamik liste oluşturur.
+    AKILLI MARKA BULUCU (AirPods -> Apple sorununu çözen yer)
     """
-    if not text:
-        return None
+    if not text: return None
+    t_lower = _normalize_tr(text)
+    try: products = load_products()
+    except: return None
 
-    t_norm = _normalize_tr(text)
-    t_lower = t_norm
-
-    # 1) Apple ekosistemi
-    apple_triggers = ["macbook", "mac book", "iphone", "ayfon", "mekbuk"]
-    for trig in apple_triggers:
-        if trig.replace(" ", "") in t_lower.replace(" ", ""):
-            return "Apple"
-    if "apple" in t_lower:
-        return "Apple"
-
-    # 2) ürünlerden marka listesi
-    try:
-        products = load_products()
-    except Exception as e:
-        print("extract_brand: load_products hatası:", repr(e))
-        products = []
-
-    brands_raw: List[str] = []
-    seen_norm: set = set()
-
+    # 1. Marka listesi kontrolü
+    known_brands = set()
     for p in products:
         b = p.get("brand")
-        if not b:
-            continue
-        nb = _normalize_tr(b)
-        if not nb:
-            continue
-        if nb in seen_norm:
-            continue
-        seen_norm.add(nb)
-        brands_raw.append(str(b))
+        if b: known_brands.add(str(b))
+    
+    for brand in known_brands:
+        b_norm = _normalize_tr(brand)
+        if re.search(r"(?:^|\s)" + re.escape(b_norm) + r"(?:$|\s)", t_lower):
+            return brand
 
-    if not brands_raw:
-        return None
-
-    tokens = re.findall(r"[a-zA-ZğĞüÜşŞıİöÖçÇ]+", t_norm)
-    ngrams: List[str] = tokens[:]
-    for i in range(len(tokens) - 1):
-        ngrams.append(tokens[i] + " " + tokens[i + 1])
-
-    best_brand: Optional[str] = None
-    best_score: float = 0.0
-
-    for piece in ngrams:
-        for b in brands_raw:
-            nb = _normalize_tr(b)
-            score = difflib.SequenceMatcher(None, piece, nb).ratio()
-            if score > best_score:
-                best_score = score
-                best_brand = b
-
-    if not best_brand or best_score < 0.78:
-        return None
-
-    return best_brand
+    # 2. Ürün isminden kontrol (AirPods yazınca Apple bulsun)
+    user_words = re.findall(r"[a-z0-9]+", t_lower)
+    for word in user_words:
+        if len(word) < 3: continue 
+        for p in products:
+            p_name = _normalize_tr(p.get("name", ""))
+            p_brand = p.get("brand")
+            if word in p_name and p_brand:
+                return str(p_brand)
+    return None
 
 
 def extract_budget(text: str) -> Optional[int]:
-    """
-    Metinden bütçe miktarını çıkar (SADECE regex/kural, AI KULLANMAZ).
-    Teknik özellik sayıları (GB, Hz, mAh vb.) filtrelenmeye çalışılır.
-    """
-    if not text:
-        return None
-
-    t = text.lower()
-    # Para sembollerini normalize et
-    t = t.replace("₺", " tl ")
-    t = t.replace("türk lirası", " tl ")
-    t = t.replace("turk lirası", " tl ")
-    t = t.replace("türk lirasi", " tl ")
-    t = t.replace("turk lirasi", " tl ")
-
-    # Tekil bütçe için: sayı + (bin/k/milyon) + opsiyonel 'tl/lira'
+    if not text: return None
+    t = text.lower().replace("₺", " tl ")
     candidates: List[int] = []
-
-    pattern = re.compile(
-        r"(\d{1,7})\s*(bin|k|milyon)?\s*(tl|lira|lirasi)?"
-    )
+    pattern = re.compile(r"(\d{1,7})\s*(bin|k|milyon)?\s*(tl|lira|lirasi)?")
     for m in pattern.finditer(t):
         num_str, unit, cur = m.groups()
-        try:
-            val = int(num_str)
-        except ValueError:
-            continue
-
-        if unit == "milyon":
-            val *= 1_000_000
-        elif unit in ("bin", "k"):
-            val *= 1000
-
-        # Eğer hiç para birimi yoksa, çevresinde "bütçe" gibi kelimeler var mı bak
+        try: val = int(num_str)
+        except: continue
+        if unit == "milyon": val *= 1_000_000
+        elif unit in ("bin", "k"): val *= 1000
+        
         window = t[max(0, m.start() - 15): m.end() + 15]
-        money_hint = any(w in window for w in ["tl", "lira", "bütçe", "butce", "butcem", "bütçem", "max", "en fazla", "bütçem", "bütçe"])
-        if not cur and not money_hint:
-            # Büyük ihtimal teknik değer (GB/HZ vs.) -> atla
-            continue
-
-        # Çok küçük değerler (örneğin 8, 16) neredeyse kesin RAM/GB, atla
-        if val < 1000:
-            continue
-
+        money_hint = any(w in window for w in ["tl", "lira", "bütçe", "fiyat"])
+        if not cur and not money_hint: continue
+        if val < 1000: continue
         candidates.append(val)
-
-    if not candidates:
-        return None
-
-    # Birden fazla bütçe varsa en büyüğünü kullan (genelde üst limit)
+    if not candidates: return None
     val = max(candidates)
-    if val <= 0:
-        return None
+    if val <= 0: return None
     return val
 
 
 def extract_budget_range(text: str) -> Optional[Tuple[int, int]]:
-    """
-    Cümleden bütçe aralığını çıkarır.
-    Örn: '90 bin ile 150 bin arası' -> (90000, 150000)
-    """
     t = text.lower().replace("₺", " tl ")
     tokens = re.findall(r"(\d{1,7})(?:\s*(bin|k|milyon))?", t)
     vals: List[int] = []
-
     for num, unit in tokens:
-        try:
-            v = int(num)
-        except Exception:
-            continue
-
-        if unit == "milyon":
-            v *= 1_000_000
-        elif unit in ("bin", "k"):
-            v *= 1000
-
+        try: v = int(num)
+        except: continue
+        if unit == "milyon": v *= 1_000_000
+        elif unit in ("bin", "k"): v *= 1000
         vals.append(v)
-
     if "bin" in t and any(v >= 10_000 for v in vals) and any(v < 1000 for v in vals):
         vals = [v * 1000 if v < 1000 else v for v in vals]
-
     if len(vals) >= 2:
         low, high = sorted(vals[:2])
         return low, high
-
     return None
 
 
 def _is_budget_only(text: str) -> bool:
-    """
-    Kullanıcı sadece bütçe yazdı mı?
-    """
-    t = _normalize_tr(text or "")
-    t = t.replace("tl", " ").replace("turk lirası", " ").replace("turklirasi", " ")
-
+    t = _normalize_tr(text or "").replace("tl", " ").replace("turk lirası", " ")
     tokens = re.findall(r"[a-zA-ZğĞüÜşŞıİöÖçÇ]+", t)
-
-    budget_words = {
-        "bin", "milyon", "k", "lira", "lirasi", "bütce", "butce",
-        "butcem", "bütcem", "butcey", "butcemi", "butcem",
-        "butce", "butcesi", "butceme", "butcemin", "butceyi",
-        "butu", "butcem", "butcemden", "butceye", "bütçe", "budget"
-    }
-
+    budget_words = {"bin", "milyon", "k", "lira", "bütce", "butce", "fiyat", "tl"}
     remaining = [w for w in tokens if w not in budget_words]
-
     return len(remaining) == 0
 
 
 def _looks_like_only_existence_query(text: str) -> bool:
-    """
-    'beyaz eşya var mı', 'beyaz eşya var m' gibi
-    sadece 'X var mı?' tarzı basit istekleri yakalar.
-    (Bunlarda kategori AI tahmini yapmayacağız.)
-    """
     t = _normalize_tr(text or "")
-    # 'var mi', 'var m', 'varmi' gibi kalıplar
-    if ("var mi" not in t) and ("var m" not in t) and ("varmi" not in t):
-        return False
-
-    # içinde sayı varsa bu sadece 'var mı' değildir (bütçeli cümle olabilir)
-    if re.search(r"\d", t):
-        return False
-
-    # Eğer zaten bizim desteklediğimiz klasik elektronik kelimeler geçiyorsa
-    # (laptop, bilgisayar, telefon vs.), bunları AI ile tahmin etmeye devam edebiliriz.
-    base_words = [
-        "laptop", "bilgisayar", "notebook", "pc",
-        "masaustu", "masaustu", "telefon", "monitor",
-        "kulaklik"
-    ]
-    if any(w in t for w in base_words):
-        return False
-
+    if ("var mi" not in t) and ("var m" not in t) and ("varmi" not in t): return False
+    if re.search(r"\d", t): return False
     return True
 
 
 def normalize_price(raw: Any) -> Optional[int]:
-    """
-    Her türlü fiyat formatını sayıya çevir.
-    """
-    if raw is None:
-        return None
-
+    if raw is None: return None
     if isinstance(raw, (int, float)):
-        try:
-            return int(raw)
-        except Exception:
-            return None
-
-    s = str(raw).strip().lower()
-    s = s.replace("tl", "").replace("₺", "")
-    s = s.replace(" ", "")
-
-    if "," in s and "." in s:
-        s = s.replace(".", "")
-        s = s.split(",", 1)[0]
-    elif "," in s and "." not in s:
-        s = s.split(",", 1)[0]
-    elif "." in s and "," not in s:
-        if s.count(".") == 1:
-            left, right = s.split(".", 1)
-            if len(right) == 3:
-                s = left + right
-            else:
-                s = left
-        else:
-            s = s.replace(".", "")
-
+        try: return int(raw)
+        except: return None
+    s = str(raw).strip().lower().replace("tl", "").replace("₺", "").replace(" ", "")
+    if "," in s and "." in s: s = s.replace(".", "").split(",", 1)[0]
+    elif "," in s: s = s.split(",", 1)[0]
+    elif "." in s:
+        if s.count(".") == 1 and len(s.split(".")[1]) == 3: s = s.replace(".", "")
+        elif s.count(".") > 1: s = s.replace(".", "")
     digits = "".join(re.findall(r"\d+", s))
-    if not digits:
-        return None
-    try:
-        return int(digits)
-    except Exception:
-        return None
+    if not digits: return None
+    try: return int(digits)
+    except: return None
 
 
 def _extract_price_pref(text: str) -> Optional[str]:
-    """
-    Kullanıcının 'ucuz / pahalı' tercihini çıkar.
-    """
     t = text.lower()
-    cheap_keywords = [
-        "ucuz", "uygun fiyat", "uygun fiyatlı", "ekonomik",
-        "bütçe düşük", "bütçem az", "çok uygun", "en ucuz"
-    ]
-    expensive_keywords = [
-        "pahalı", "en iyisi olsun", "en iyi olsun", "üst seviye",
-        "high end", "bütçe sorun değil", "bütçe sıkıntı değil",
-        "paraya bakmıyorum"
-    ]
-
-    if any(k in t for k in cheap_keywords):
-        return "cheap"
-    if any(k in t for k in expensive_keywords):
-        return "expensive"
+    if any(k in t for k in ["ucuz", "uygun", "ekonomik"]): return "cheap"
+    if any(k in t for k in ["pahalı", "üst seviye", "en iyi"]): return "expensive"
     return None
 
 
-# ============================================================
-#  AI-FIRST INPUT PARSING & KATEGORİ / USAGE ANALİZİ
-# ============================================================
-
 def _extract_usage(text: str) -> Optional[str]:
-    """
-    Basit keyword taraması ile kullanım senaryosu çıkarır.
-    """
     t = text.lower()
-    if any(k in t for k in ["oyun", "gaming", "oyuncu"]):
-        return "oyun"
-    if any(k in t for k in ["iş", "ofis", "business", "çalışma"]):
-        return "iş"
-    if any(k in t for k in ["okul", "öğrenci", "ders", "kampüs", "üniversite"]):
-        return "okul"
-    if any(k in t for k in ["günlük", "daily", "genel", "ev", "multimedya"]):
-        return "günlük"
+    if any(k in t for k in ["oyun", "gaming"]): return "oyun"
+    if any(k in t for k in ["iş", "ofis", "business"]): return "iş"
+    if any(k in t for k in ["okul", "öğrenci", "ders"]): return "okul"
+    if any(k in t for k in ["günlük", "ev"]): return "günlük"
     return None
 
 
 def _get_all_categories(products: List[Dict[str, Any]]) -> List[str]:
-    """
-    products.json içindeki benzersiz kategori listesini döndürür.
-    """
     cats: List[str] = []
     seen_norm: set = set()
     for p in products:
         c = p.get("category")
-        if not c:
-            continue
+        if not c: continue
         norm = _normalize_tr(c)
         if norm not in seen_norm:
             seen_norm.add(norm)
             cats.append(str(c))
     return cats
-# Bu fonksiyonu _get_all_categories fonksiyonunun hemen altına yapıştır:
 
-def extract_category_from_products(user_text: str, all_products: List[Dict[str, Any]]) -> Optional[str]:
-    """
-    Kullanıcının girdiği kelimeyi (örn: 'macbook') ürün listesinde arar.
-    Eğer ürün adında bu kelime geçiyorsa, o ürünün kategorisini döndürür.
-    Böylece elle liste tanımlamana gerek kalmaz.
-    """
-    if not user_text or not all_products:
-        return None
 
-    # Kullanıcı metnini temizle ve kelimelere ayır
-    norm_text = _normalize_tr(user_text)
-    words = re.findall(r"[a-z0-9]+", norm_text)
-
-    for product in all_products:
-        p_name = _normalize_tr(product.get("name", ""))
-        p_brand = _normalize_tr(product.get("brand", ""))
-        p_cat = product.get("category")
-
-        if not p_cat:
-            continue
-
-        # Kelimeleri tek tek kontrol et
-        for w in words:
-            # En az 3 harfli kelimelere bak ( 've', 'de' gibi ekleri atlamak için)
-            if len(w) < 3:
-                continue
-            
-            # Eğer kelime ürün adında veya markasında geçiyorsa kategoriyi kap!
-            if w in p_name or w in p_brand:
-                return p_cat
-
-    return None
-
-def ai_understand_input(
-    user_text: str,
-    products: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+def ai_understand_input(user_text: str, products: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Kullanıcı isteğini analiz eder.
-    Artık teknik özellikleri (i5, 16gb, ssd vs.) de algılar ve filtreye ekler.
+    iPhone 17 sorununu çözen yer: Sayıları 'required_numbers' olarak ayırır.
     """
     user_text = user_text or ""
-    # Regex işlemi için metni normalize et
     t_lower = _normalize_tr(user_text)
 
     budget = extract_budget(user_text)
     budget_range = extract_budget_range(user_text)
     
-    # 1. Önce genel listeye bak (Laptop, Telefon vb. yazdı mı?)
-    category = extract_product_category(user_text)
-
-    # 2. Eğer bulamadıysan, YENİ FONKSİYONU ÇAĞIR ve JSON'a bak
-    if not category:
-        category = extract_category_from_products(user_text, products)
+    # Kategori Bulma (SADECE DİNAMİK YÖNTEM)
+    category = extract_category_dynamically(user_text, products)
 
     usage = _extract_usage(user_text)
     brand = extract_brand(user_text)
@@ -581,36 +307,21 @@ def ai_understand_input(
     if budget is None and budget_range:
         budget = (budget_range[0] + budget_range[1]) // 2
 
-    # --- YENİ EKLENEN KISIM: TEKNİK ÖZELLİK FİLTRESİ ---
-    # "i5", "ryzen 5", "16gb", "rtx 3060", "ssd" gibi terimleri yakalar.
+    # --- TEKNİK ÖZELLİK FİLTRESİ ---
     spec_regex = r"(?:^|\s)(i[3579]|ryzen\s?\d*|rtx\s?\d*|gtx\s?\d*|\d+gb|\d+tb|ssd)(?:$|\s)"
     found_specs = re.findall(spec_regex, t_lower)
-    
-    # Boşlukları temizle (örn: "ryzen 5" -> "ryzen5" veya olduğu gibi bırakabiliriz,
-    # ama arama yaparken kolaylık olsun diye strip yapıyoruz)
     spec_filters = [s.strip().replace(" ", "") for s in found_specs]
-    # ----------------------------------------------------
 
-    categories = _get_all_categories(products)
+    # --- MODEL NUMARASI FİLTRESİ (ZORUNLU SAYILAR) ---
+    all_numbers = re.findall(r"\b\d+\b", t_lower)
+    required_numbers = []
+    for n in all_numbers:
+        val = int(n)
+        # Bütçe değilse ve 10000'den küçükse model numarasıdır
+        if val < 10000 and val != budget:
+            required_numbers.append(n)
+
     force_category_invalid = _looks_like_only_existence_query(user_text)
-
-    # Kategori yoksa fuzzy search (Burası eski kodun aynısı)
-    if category is None and categories and not force_category_invalid:
-        norm_t = _normalize_tr(user_text)
-        words = re.findall(r"[a-zA-ZğĞüÜşŞıİöÖçÇ]+", norm_t)
-        best_cat = None
-        best_score = 0.0
-
-        for c in categories:
-            cn = _normalize_tr(c)
-            for w in words:
-                score = difflib.SequenceMatcher(None, cn, w).ratio()
-                if score > best_score:
-                    best_score = score
-                    best_cat = c
-
-        if best_cat and best_score >= 0.7:
-            category = best_cat
 
     return {
         "budget": budget,
@@ -621,114 +332,53 @@ def ai_understand_input(
         "price_pref": price_pref,
         "budget_only": budget_only,
         "force_category_invalid": force_category_invalid,
-        "spec_filters": spec_filters  # <-- YENİ EKLENEN ANAHTAR
+        "spec_filters": spec_filters,
+        "required_numbers": required_numbers # <-- ÖNEMLİ
     }
 
+
 # ============================================================
-#  PUANLAMA, FİYAT BANDI ve AI AÇIKLAMA
+#  PUANLAMA & ÖNERİ MOTORU
 # ============================================================
 
-def _price_range_for(
-    products: List[Dict[str, Any]],
-    category: Optional[str]
-) -> Tuple[int, int]:
-    """
-    Verilen kategori için min/max fiyatı normalize_price kullanarak döndürür.
-    """
-    prices: List[int] = []
+def _price_range_for(products: List[Dict[str, Any]], category: Optional[str]) -> Tuple[int, int]:
     items = products or []
-
     if category:
         items = [p for p in items if _same_category(p.get("category", ""), category)]
-
+    
+    prices = []
     for p in items:
         val = normalize_price(p.get("price"))
         if val is not None:
             p["_price"] = val
             prices.append(val)
-
+            
     if not prices:
         for p in products:
-            val = normalize_price(p.get("price"))
-            if val is not None:
-                p["_price"] = val
-                prices.append(val)
-
-    if not prices:
-        return 0, 0
-
+             val = normalize_price(p.get("price"))
+             if val is not None: prices.append(val)
+    if not prices: return 0, 0
     return min(prices), max(prices)
 
 
-def _normalize_budget(
-    budget: Optional[int],
-    products: List[Dict[str, Any]],
-    category: Optional[str]
-) -> int:
-    """
-    Bütçeyi sistemdeki min/max aralığa oturtur.
-    """
+def _normalize_budget(budget: Optional[int], products: List[Dict[str, Any]], category: Optional[str]) -> int:
     mn, mx = _price_range_for(products, category)
-    if mn == 0 and mx == 0:
-        return budget or 0
-
-    if budget is None:
-        return (mn + mx) // 2
-    if budget < mn:
-        return mn
-    if budget > mx:
-        return mx
+    if mn == 0 and mx == 0: return budget or 0
+    if budget is None: return (mn + mx) // 2
+    if budget < mn: return mn
+    if budget > mx: return mx
     return budget
 
 
 def _usage_score(product: Dict[str, Any], usage: Optional[str]) -> int:
-    """
-    Ürünün kullanım senaryosuna (oyun/iş/okul/günlük) uygunluğunu puanlar.
-    """
-    if not usage:
-        return 0
-
+    if not usage: return 0
     feats = " ".join(product.get("features", [])).lower()
     tags = [str(u).lower() for u in product.get("usage_tags", [])]
     score = 0
-
-    price = product.get("_price")
-    if price is None:
-        price = normalize_price(product.get("price")) or 0
-        product["_price"] = price
-
-    if usage in tags:
-        score += 4
-
-    if usage == "oyun":
-        if "rtx" in feats or "gaming" in feats:
-            score += 4
-        if "ryzen 7" in feats or "i7" in feats:
-            score += 3
-        if "16gb" in feats:
-            score += 2
-    elif usage == "iş":
-        if "i7" in feats or "ryzen 7" in feats:
-            score += 3
-        if "512gb" in feats:
-            score += 2
-        if "16gb" in feats:
-            score += 2
-    elif usage == "okul":
-        if price <= 25000:
-            score += 3
-        if "8gb" in feats:
-            score += 1
-        if "256gb" in feats:
-            score += 1
-    elif usage == "günlük":
-        if price <= 40000:
-            score += 2
-        if "16gb" in feats or "8gb" in feats:
-            score += 1
-        if "512gb" in feats or "256gb" in feats:
-            score += 1
-
+    if usage in tags: score += 4
+    if usage == "oyun" and ("rtx" in feats or "16gb" in feats): score += 3
+    if usage == "iş" and ("ssd" in feats or "i7" in feats): score += 3
+    if usage == "okul" and "8gb" in feats: score += 2
     return score
 
 
@@ -739,8 +389,10 @@ def find_best_products(
     brand: Optional[str] = None,
     usage: Optional[str] = None,
     budget_range: Optional[Tuple[int, int]] = None,
-    spec_filters: List[str] = None  # <-- Yeni parametre
-):
+    spec_filters: List[str] = None,
+    required_numbers: List[str] = None, # <-- ÖNEMLİ
+    user_input_text: str = ""
+) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
     candidates = products[:]
     
     # 1. Kategori Filtresi
@@ -752,26 +404,37 @@ def find_best_products(
     if brand:
         candidates = [p for p in candidates if _normalize_tr(p.get("brand")) == _normalize_tr(brand)]
 
-    # 3. (YENİ) TEKNİK ÖZELLİK FİLTRESİ (i5, 16gb vs.)
+    # 3. Teknik Özellik Filtresi
     if spec_filters:
         for spec in spec_filters:
-            # Her bir özellik (örn: "i5") ürünün isminde VEYA özelliklerinde geçiyor mu?
             filtered_by_spec = []
             for p in candidates:
-                # Ürün bilgilerini tek bir metin haline getirip arama yapıyoruz
-                p_text = (
-                    _normalize_tr(p.get("name", "")) + " " + 
-                    " ".join([_normalize_tr(f) for f in p.get("features", [])])
-                )
-                
-                # "ryzen 5" kullanıcısı için "ryzen5" veya "ryzen 5" araması
+                p_text = (_normalize_tr(p.get("name", "")) + " " + " ".join([_normalize_tr(f) for f in p.get("features", [])]))
                 if spec in p_text.replace(" ", "") or spec in p_text:
                     filtered_by_spec.append(p)
-            
-            # Eğer bu özelliği sağlayan ürün varsa listeyi daralt
-            # (Hiç ürün yoksa filtreyi yoksay ki liste boşalmasın)
             if filtered_by_spec:
                 candidates = filtered_by_spec
+
+    # 4. KATI SAYI FİLTRESİ (iPhone 17 yoksa 14 gösterme!)
+    if required_numbers:
+        strict_candidates = []
+        for p in candidates:
+            p_name = _normalize_tr(p.get("name", ""))
+            matches_all = True
+            for num in required_numbers:
+                if num not in p_name: 
+                    matches_all = False
+                    break
+            if matches_all:
+                strict_candidates.append(p)
+        
+        # Eğer eşleşen varsa listeyi daralt. Yoksa boş kalsın (bulunamadı desin)
+        if strict_candidates:
+            candidates = strict_candidates
+        else:
+            # Eğer 17 arandı ve 17 yoksa, candidates'i boşaltıyoruz ki 14 gelmesin.
+            # Sadece model numarası arandığında bu kadar katı olsun.
+            candidates = []
 
     if not candidates: return None, [], []
 
@@ -791,118 +454,81 @@ def find_best_products(
     # Puanlama
     scored = []
     target = budget or (low+high)/2
-    if target == float('inf') or target == 0: 
-        target = 1  # 0'a bölme hatası olmasın
+    if target == float('inf') or target == 0: target = 1
+    
+    user_words = []
+    if user_input_text:
+        user_words = _normalize_tr(user_input_text).split()
 
     for p in candidates:
-        diff = abs(p["_price"] - target)
+        price = p["_price"]
+        diff = abs(price - target)
         uscore = _usage_score(p, usage)
-        scored.append((p, diff, -uscore))
         
-    scored.sort(key=lambda x: (x[1], x[2]))
+        # İsim Benzerlik Puanı
+        name_match_score = 0
+        p_name_norm = _normalize_tr(p.get("name", ""))
+        for w in user_words:
+            if len(w) < 2: continue
+            if w in p_name_norm:
+                name_match_score += 100 
+
+        scored.append((p, -name_match_score, diff, -uscore))
+        
+    scored.sort(key=lambda x: (x[1], x[2], x[3]))
     ordered = [x[0] for x in scored]
-    
     band_sorted = [p for p in ordered if p in band_filtered]
     top = band_sorted[0] if band_sorted else ordered[0] if ordered else None
     
     return top, ordered, band_filtered
 
 
-def _desc_cache_key(
-    product: Dict[str, Any],
-    budget: Optional[int],
-    usage: Optional[str]
-) -> Tuple[Any, ...]:
-    """
-    Açıklama cache key'i.
-    """
-    name = product.get("name")
-    brand = product.get("brand")
-    price = product.get("price")
-    features = tuple(product.get("features", []))
-    if isinstance(budget, (int, float)):
-        budget_band = int(budget // 5000)
-    else:
-        budget_band = None
-    return (name, brand, price, features, usage, budget_band)
+def _desc_cache_key(p, budget, usage):
+    return (p.get("name"), p.get("brand"), p.get("price"), tuple(p.get("features", [])), usage, budget)
 
 
 def generate_ai_short_praise(product: Dict[str, Any]) -> str:
-    """
-    Alternatif ürünler için 1 cümlelik micro övgü.
-    RATE LIMIT VE HIZ NEDENİYLE ARTIK OPENAI KULLANMIYOR.
-    Sadece ürünün özelliklerinden statik kısa cümle üretir.
-    """
-    name = product.get("name", "")
-    brand = product.get("brand", "")
-    price = product.get("price", "")
     feats = ", ".join(product.get("features", [])[:3])
-
-    base = f"{brand} {name}".strip()
-    if feats:
-        return f"{base}, {feats} özellikleriyle segmentinde dengeli ve güven veren bir seçenektir."
-    else:
-        return f"{base}, {price} TL seviyesinde değerlendirilebilecek bir modeldir."
+    base = f"{product.get('brand')} {product.get('name')}".strip()
+    return f"{base}, {feats} özellikleriyle öne çıkıyor."
 
 
-def generate_ai_description(
-    product: Dict[str, Any],
-    budget: Optional[int],
-    usage: Optional[str] = None
-) -> str:
+def generate_ai_description(product: Dict[str, Any], budget: Optional[int], usage: Optional[str] = None) -> str:
     """
-    Seçilen ürün için 3–5 cümlelik açıklama.
-    (Sadece BURADA 1 adet OpenAI çağrısı yapılıyor; rate limit olursa statik fallback kullanılır.)
+    TEKNİK VE CİDDİ AÇIKLAMA ÜRETİCİ
     """
-    usage_text = usage or ""
-    budget_text = f"Bütçe: {budget} TL. " if budget is not None else ""
-
+    usage_text = usage or "genel kullanım"
     cache_key = _desc_cache_key(product, budget, usage_text)
-    if cache_key in DESCRIPTION_CACHE:
-        return DESCRIPTION_CACHE[cache_key]
+    if cache_key in DESCRIPTION_CACHE: return DESCRIPTION_CACHE[cache_key]
 
     system_msg = (
-        "Türkçe yaz. Kısa, teknik ve somut ifade kullan. Abartı yok. "
-        "Sadece verilen özelliklerden hareketle kalite ve performans çıkarımı yap."
+        "Sen deneyimli bir teknoloji editörüsün. "
+        "Ürünleri tanıtırken asla 'harika', 'mükemmel' gibi satış ağzı kullanma. "
+        "Tamamen teknik özelliklere ve bunların kullanıcıya sağladığı somut faydaya odaklan. "
+        "Cümlelerin nesnel, bilgilendirici ve profesyonel olsun. "
+        "Şu yapıyı takip et: 1. İşlemci/RAM/Güç, 2. Ekran/Görüntü kalitesi, 3. Depolama/Kapasite, 4. Segment konumu."
     )
     user_msg = (
-        "Teknik ve güven veren 3-5 cümlelik ürün açıklaması yaz. "
-        "Donanım (CPU/GPU/RAM/depolama/ekran) ve kalite algısını netleştir. "
-        "Fiyat/performans ve kullanım senaryosuna uygunluğunu belirt.\n\n"
-        f"Ürün: {product.get('name')}.\n"
-        f"Kategori: {product.get('category', '')}.\n"
-        f"Marka: {product.get('brand', '')}.\n"
-        f"Özellikler: {', '.join(product.get('features', []))}.\n"
-        f"Fiyat: {product.get('price')} TL.\n"
-        f"{budget_text}Senaryo: {usage_text}."
+        f"Ürün: {product.get('name')}\n"
+        f"Özellikler: {', '.join(product.get('features', []))}\n"
+        f"Fiyat: {product.get('price')} TL\n"
+        f"Kullanım Amacı: {usage_text}\n\n"
+        "Bu ürün için teknik detayları vurgulayan, 4-5 cümlelik, akıcı ve profesyonel bir paragraf yaz."
     )
 
     try:
         content = _openai_chat(
-            [
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg},
-            ],
-            max_tokens=180,
-            temperature=0.35,
+            [{"role": "system", "content": system_msg}, {"role": "user", "content": user_msg}],
+            max_tokens=250, temperature=0.3
         )
-        print("AI AÇIKLAMA ÜRETİLDİ:", content[:120])
         DESCRIPTION_CACHE[cache_key] = content
         return content
     except Exception as e:
-        print("AI AÇIKLAMA HATASI, FALLBACK KULLANILDI:", repr(e))
-        fallback = (
-            f"{product.get('name')} fiyat/performans açısından dengeli bir modeldir. "
-            f"{product.get('price')} TL seviyesinde; "
-            f"{', '.join(product.get('features', [])[:2])} gibi somut özellikler, "
-            f"{usage or 'genel kullanım'} için güven veren bir kalite ve kararlılık sunar."
-        )
-        DESCRIPTION_CACHE[cache_key] = fallback
-        return fallback
+        return f"{product.get('name')}, teknik donanımıyla {usage_text} senaryolarında kararlı bir performans sunar."
 
 
 # ============================================================
-#  FLASK ROUTE'LAR: AUTH, RECOMMEND, HISTORY, MAIN
+#  FLASK ROUTE'LAR
 # ============================================================
 
 @app.route("/")
@@ -1101,6 +727,9 @@ def recommend():
         # ======================================================
 
         # Ana seçim motoru
+       # ------------------------------------------------------------------
+        # GÜNCELLENMİŞ ARAMA MOTORU ÇAĞRISI
+        # ------------------------------------------------------------------
         main_product, ordered, band_filtered = find_best_products(
             products=products,
             budget=budget,
@@ -1108,16 +737,29 @@ def recommend():
             brand=brand,
             usage=usage,
             budget_range=budget_range,
+            # --- YENİ EKLENEN KRİTİK PARAMETRELER ---
+            spec_filters=parsed.get("spec_filters"),       # i5, 16gb, ssd vb.
+            required_numbers=parsed.get("required_numbers"), # 17, 15, 3060, 4060 vb.
+            user_input_text=user_input                     # Puanlama için tam metin
         )
 
-        # Bütçe/band + kategori var ama bu bantta ürün yoksa
+        # 1. KATI FİLTRE SONUCU ÜRÜN BULUNAMADIYSA (Örn: iPhone 17 yoksa)
+        if not main_product:
+             return jsonify({
+                "error_title": "Ürün Bulunamadı",
+                "error_message": "Aradığın modele veya teknik özelliklere sahip bir ürün şu an stoğumuzda bulunmuyor.",
+                "error_type": "no_match_filtered",
+                "ask_new_input": True
+            }), 404
+
+        # 2. ÜRÜN VAR AMA BÜTÇE YETMİYORSA
         if (budget is not None or budget_range is not None) and category and not band_filtered:
             mn, mx = _price_range_for(products, category)
             return jsonify({
-                "error_title": "Uygun Ürün Bulunamadı",
+                "error_title": "Bütçe Aralığında Ürün Yok",
                 "error_message": (
                     "Verdiğin bütçe aralığında bu kategoride ürün bulunamadı. "
-                    "Bütçeyi değiştirerek veya farklı bir kategori seçerek tekrar deneyebilirsin."
+                    "Bütçeyi artırmayı veya farklı bir kategori seçmeyi deneyebilirsin."
                 ),
                 "error_type": "budget_out_of_range",
                 "min_price": mn if mn != 0 else None,

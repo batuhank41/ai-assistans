@@ -276,9 +276,16 @@ def normalize_price(raw: Any) -> Optional[int]:
 
 
 def _extract_price_pref(text: str) -> Optional[str]:
-    t = text.lower()
-    if any(k in t for k in ["ucuz", "uygun", "ekonomik"]): return "cheap"
-    if any(k in t for k in ["pahalı", "üst seviye", "en iyi"]): return "expensive"
+    t = _normalize_tr(text or "")
+    neg_patterns = ["pahali degil", "pahali olmayan", "cok pahali degil", "cok pahali olmayan", "pahali olmayan"]
+    cheap_kws = ["ucuz", "uygun", "ekonomik", "makul", "bütçe düsük", "butce dusuk", "fiyat uygun"]
+    expensive_kws = ["pahali", "cok pahali", "ust seviye", "en iyi", "high end", "premium", "butce sorun degil", "fiyat sorun degil"]
+    if any(p in t for p in neg_patterns):
+        return "cheap"
+    if any(k in t for k in cheap_kws):
+        return "cheap"
+    if any(k in t for k in expensive_kws):
+        return "expensive"
     return None
 
 

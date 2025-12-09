@@ -177,10 +177,11 @@
 
             async function getRecommendation(customInput = null) {
                 const userInputEl = document.getElementById('user-input');
-                const rawInput = customInput !== null ?
-                    String(customInput) :
-                    (userInputEl ? userInputEl.value : '');
-                const userInput = rawInput.trim();
+                if (customInput !== null && userInputEl) {
+                    userInputEl.value = String(customInput);
+                }
+                const rawInput = userInputEl ? userInputEl.value : '';
+                const userInput = String(rawInput).trim();
 
                 const submitBtn = document.getElementById('submit-btn');
                 const loading = document.getElementById('loading');
@@ -382,11 +383,14 @@
                     showError('Lütfen isteğini tekrar yaz.');
                     return;
                 }
-
+                const mainInput = document.getElementById('user-input');
+                if (mainInput) {
+                    mainInput.value = val;
+                }
                 const retrySection = document.getElementById('retry-section');
                 if (retrySection) retrySection.style.display = 'none';
 
-                await getRecommendation(val);
+                await getRecommendation();
             }
 
             function showError(message, title) {

@@ -3,10 +3,14 @@ from auth import register_user, login_user, verify_token, logout_token, push_his
 import json
 import re
 import os
+import mysql.connector
+from mysql.connector import Error
 import difflib
+import random
 from openai import OpenAI
 from dotenv import load_dotenv
 import time
+import random
 from typing import Any, Dict, List, Optional, Tuple
 
 # ============================================================
@@ -76,27 +80,143 @@ def _openai_chat(
 #  ÜRÜN YÜKLEME & GENEL YARDIMCI FONKSİYONLAR
 # ============================================================
 
-def load_products() -> List[Dict[str, Any]]:
+def load_products(min_price=None, max_price=None, limit=100) -> List[Dict[str, Any]]:
+    products = []
+    
+    db_config = {
+        'host': 'localhost',
+        'user': 'root',
+        'password': '', 
+        'database': 'projedb'
+    }
+
     try:
-        with open("products.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            if "products" in data and isinstance(data["products"], list):
-                return data["products"]
-            for v in data.values():
-                if isinstance(v, list) and v and isinstance(v[0], dict):
-                    return v
-            return []
-        elif isinstance(data, list):
-            return data
-        else:
-            return []
-    except FileNotFoundError:
-        print("UYARI: products.json bulunamadı.")
+        connection = mysql.connector.connect(**db_config)
+        
+        if connection.is_connected():
+            cursor = connection.cursor(dictionary=True)
+            
+            # ============================================================
+            # 1. BÖLÜM: LAPTOPLARI ÇEK (hepsiburada_dizustu_bilgisayar)
+            # ============================================================
+            sql_laptop = "SELECT * FROM `hepsiburada_dizustu_bilgisayar` WHERE 1=1"
+            params_laptop = []
+            
+            # Laptop Fiyat Filtresi (Fiyat sütunu: '15.000 TL')
+            if min_price is not None:
+                sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) >= %s"
+                params_laptop.append(min_price)
+            if max_price is not None:
+                sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) <= %s"
+                params_laptop.append(max_price)
+            
+            # Her iki kategoriden de dengeli gelsin diye limiti paylaştırıyoruz (Örn: 50 laptop, 50 telefon)
+            split_limit = int(limit / 2) + 10 # Biraz espayı bırakalım
+            sql_laptop += " ORDER BY RAND() LIMIT %s"
+            params_laptop.append(split_limit)
+
+            cursor.execute(sql_laptop, tuple(params_laptop))
+            laptop_rows = cursor.fetchall()
+
+            for row in laptop_rows:
+                features = []
+                if row.get('_lemci'): features.append(row['_lemci'])
+                
+                # Nesil düzeltmesi (12.Nesil. Nesil hatasını önler)
+                raw_gen = str(row.get('_lemci_Nesli', ''))
+                clean_gen = raw_gen.lower().replace('nesil', '').replace('.', '').strip()
+                if clean_gen: features.append(f"{clean_gen}. Nesil")
+                
+                if row.get('Ram_Sistem_Belle_i_'): features.append(f"{row['Ram_Sistem_Belle_i_']} RAM")
+                if row.get('SSD_Kapasitesi'): features.append(f"{row['SSD_Kapasitesi']} SSD")
+                if row.get('Ekran_Kart_'): features.append(row['Ekran_Kart_'])
+
+                raw_name = row.get('_r_n_Ad_', '')
+                brand_guess = raw_name.split(" ")[0] if raw_name else "Bilinmiyor"
+                
+                # Fiyat Temizleme
+                raw_price_str = row.get('Fiyat', '0')
+                try:
+                    clean_price = int(raw_price_str.replace('.','').replace(' TL','').strip())
+                except:
+                    clean_price = 0
+
+                products.append({
+                    "name": raw_name,
+                    "price": raw_price_str,
+                    "brand": brand_guess,
+                    "category": "Bilgisayar",
+                    "features": features,
+                    "url": "#",
+                    "_price": clean_price
+                })
+
+            # ============================================================
+            # 2. BÖLÜM: TELEFONLARI ÇEK (Trendyol_Smartphones_dataset)
+            # ============================================================
+            sql_phone = "SELECT * FROM `Trendyol_Smartphones_dataset` WHERE 1=1"
+            params_phone = []
+
+            # Telefon Fiyat Filtresi (Price sütunu: '3500' veya '3500 TL')
+            if min_price is not None:
+                sql_phone += " AND CAST(Price AS UNSIGNED) >= %s"
+                params_phone.append(min_price)
+            if max_price is not None:
+                sql_phone += " AND CAST(Price AS UNSIGNED) <= %s"
+                params_phone.append(max_price)
+
+            sql_phone += " ORDER BY RAND() LIMIT %s"
+            params_phone.append(split_limit)
+
+            cursor.execute(sql_phone, tuple(params_phone))
+            phone_rows = cursor.fetchall()
+
+            for row in phone_rows:
+                features = []
+                if row.get('CPU'): features.append(f"İşlemci: {row['CPU']}")
+                if row.get('RAM'): features.append(f"{row['RAM']}GB RAM")
+                if row.get('Storage'): features.append(f"{row['Storage']}GB Hafıza")
+                if row.get('Screen_Size'): features.append(f"{row['Screen_Size']} inç Ekran")
+                if row.get('Camera_Resolution'): features.append(f"{row['Camera_Resolution']} MP Kamera")
+                if row.get('Battery_Power'): features.append(f"{row['Battery_Power']} mAh")
+
+                # Marka ve Model Birleştirme
+                brand_val = row.get('Brand', '')
+                model_val = row.get('Model', '')
+                full_name = f"{brand_val} {model_val}".strip()
+
+                # Fiyat Temizleme
+                raw_price_str = str(row.get('Price', '0'))
+                try:
+                    # Virgül veya nokta karmaşasını temizle
+                    clean_price = int(float(raw_price_str.replace('TL', '').replace('.', '').replace(',', '.').strip()))
+                except:
+                    clean_price = 0
+
+                products.append({
+                    "name": full_name,
+                    "price": clean_price, # Telefonlar için direkt sayı basıyoruz
+                    "brand": brand_val,
+                    "category": "Telefon",
+                    "features": features,
+                    "url": row.get('Link', '#') if row.get('Link') else "#", # Link varsa al
+                    "_price": clean_price
+                })
+
+            cursor.close()
+            connection.close()
+            
+            # Listeyi karıştır ki hep önce bilgisayarlar gelmesin
+            import random
+            random.shuffle(products)
+            
+            print(f"Toplam {len(products)} ürün çekildi (Laptop + Telefon).")
+
+    except Error as e:
+        print(f"Veritabanı Hatası: {e}")
         return []
-    except Exception as e:
-        print("products.json hatası:", repr(e))
-        return []
+
+    return products
 
 
 def _normalize_tr(s: Any) -> str:
@@ -340,13 +460,21 @@ def ai_understand_input(user_text: str, products: List[Dict[str, Any]]) -> Dict[
     spec_regex = r"(?:^|\s)(i[3579]|ryzen\s?\d*|rtx\s?\d*|gtx\s?\d*|\d+gb|\d+tb|ssd)(?:$|\s)"
     found_specs = re.findall(spec_regex, t_lower)
     spec_filters = [s.strip().replace(" ", "") for s in found_specs]
+    spec_nums_exclude = set()
+    for s in spec_filters:
+        m = re.match(r"^(\d+)(gb|tb)$", s)
+        if m:
+            spec_nums_exclude.add(m.group(1))
 
     # --- MODEL NUMARASI FİLTRESİ (ZORUNLU SAYILAR) ---
     all_numbers = re.findall(r"\b\d+\b", t_lower)
     required_numbers = []
     for n in all_numbers:
         val = int(n)
-        # Bütçe değilse ve 10000'den küçükse model numarasıdır
+        if n in spec_nums_exclude:
+            continue
+        if val < 10:
+            continue
         if val < 10000 and val != budget:
             required_numbers.append(n)
 
@@ -419,9 +547,10 @@ def find_best_products(
     usage: Optional[str] = None,
     budget_range: Optional[Tuple[int, int]] = None,
     spec_filters: List[str] = None,
-    required_numbers: List[str] = None, # <-- ÖNEMLİ
+    required_numbers: List[str] = None,
     user_input_text: str = ""
 ) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    
     candidates = products[:]
     
     # 1. Kategori Filtresi
@@ -444,7 +573,7 @@ def find_best_products(
             if filtered_by_spec:
                 candidates = filtered_by_spec
 
-    # 4. KATI SAYI FİLTRESİ (iPhone 17 yoksa 14 gösterme!)
+    # 4. KATI SAYI FİLTRESİ
     if required_numbers:
         strict_candidates = []
         for p in candidates:
@@ -457,12 +586,9 @@ def find_best_products(
             if matches_all:
                 strict_candidates.append(p)
         
-        # Eğer eşleşen varsa listeyi daralt. Yoksa boş kalsın (bulunamadı desin)
         if strict_candidates:
             candidates = strict_candidates
         else:
-            # Eğer 17 arandı ve 17 yoksa, candidates'i boşaltıyoruz ki 14 gelmesin.
-            # Sadece model numarası arandığında bu kadar katı olsun.
             candidates = []
 
     if not candidates: return None, [], []
@@ -470,7 +596,7 @@ def find_best_products(
     # Fiyat Temizliği
     for p in candidates: p["_price"] = normalize_price(p.get("price")) or 0
 
-    # Fiyat Bandı
+    # Fiyat Bandı Kontrolü
     if budget_range:
         low, high = budget_range
     elif budget:
@@ -478,8 +604,27 @@ def find_best_products(
     else:
         low, high = 0, float('inf')
 
+    # Band içindeki ürünleri bul
     band_filtered = [p for p in candidates if low <= p["_price"] <= high]
-    
+
+    # --- OPTİMİZASYON: LİMİTLEME (Fix for 500+ items crash) ---
+    # Eğer 50'den fazla ürün varsa, sistemi yormamak için listeyi daraltıyoruz.
+    if len(band_filtered) > 50:
+        # Fiyata göre sırala
+        band_filtered.sort(key=lambda x: x["_price"])
+        
+        # Listeyi 3 parçaya böl (Ucuz, Orta, Pahalı) ve her parçadan örnek al
+        # Böylece 8000-60000 arası dendiğinde sadece 8000likler gelmez, 60000likler de gelir.
+        chunk_size = len(band_filtered) // 3
+        
+        part1 = band_filtered[:15] # En ucuzlar
+        part2 = band_filtered[chunk_size : chunk_size + 15] # Ortalar
+        part3 = band_filtered[-15:] # En pahalılar
+        
+        # Yeni daraltılmış liste
+        band_filtered = part1 + part2 + part3
+    # ----------------------------------------------------------
+
     # Puanlama
     scored = []
     target = budget or (low+high)/2
@@ -489,12 +634,11 @@ def find_best_products(
     if user_input_text:
         user_words = _normalize_tr(user_input_text).split()
 
-    for p in candidates:
+    for p in band_filtered: # Artık sadece daraltılmış listede döngü kuruyoruz
         price = p["_price"]
         diff = abs(price - target)
         uscore = _usage_score(p, usage)
         
-        # İsim Benzerlik Puanı
         name_match_score = 0
         p_name_norm = _normalize_tr(p.get("name", ""))
         for w in user_words:
@@ -506,10 +650,12 @@ def find_best_products(
         
     scored.sort(key=lambda x: (x[1], x[2], x[3]))
     ordered = [x[0] for x in scored]
-    band_sorted = [p for p in ordered if p in band_filtered]
-    top = band_sorted[0] if band_sorted else ordered[0] if ordered else None
     
-    return top, ordered, band_filtered
+    # Eğer filtreleme sonucu boş kaldıysa (çok nadir), ham ordered listesini dön
+    final_band = ordered if ordered else band_filtered
+    top = final_band[0] if final_band else None
+    
+    return top, final_band, final_band
 
 
 def _desc_cache_key(p, budget, usage):
@@ -521,6 +667,16 @@ def generate_ai_short_praise(product: Dict[str, Any]) -> str:
     base = f"{product.get('brand')} {product.get('name')}".strip()
     return f"{base}, {feats} özellikleriyle öne çıkıyor."
 
+
+def generate_ai_alt_snippet(product: Dict[str, Any]) -> str:
+    brand = (product.get("brand") or "").strip()
+    name = (product.get("name") or "").strip()
+    base = f"{brand} {name}".strip()
+    feats = product.get("features", [])
+    feat_line = ", ".join(feats[:3])
+    left = f"{base}, {feat_line} özellikleriyle öne çıkıyor." if feat_line else f"{base} öne çıkıyor."
+    right = f"fiyat/performans açısından bütçene ve kullanım senaryona uygun bir alternatif olarak listelendi."
+    return f"{left} {right}"
 
 def generate_ai_description(product: Dict[str, Any], budget: Optional[int], usage: Optional[str] = None) -> str:
     """
@@ -662,14 +818,33 @@ def recommend():
                 "ask_new_input": True
             }), 400
 
-        products = load_products()
+# 1. Önce bütçeyi input içinden bulalım (Hafif işlem)
+        pre_budget_range = extract_budget_range(user_input)
+        pre_budget = extract_budget(user_input)
+
+        min_p = None
+        max_p = None
+
+        if pre_budget_range:
+            min_p = pre_budget_range[0]
+            max_p = pre_budget_range[1]
+        elif pre_budget:
+            # Kullanıcı tek fiyat verdiyse (Örn: 20.000) %30 aşağı ve yukarısına bak
+            min_p = int(pre_budget * 0.7)
+            max_p = int(pre_budget * 1.3)
+        
+        # 2. Şimdi veritabanından SADECE bu aralığı isteyelim (Ağır işlem optimize edildi)
+        # Limit=50 diyerek en fazla 50 ürün çekiyoruz, 500 tane çekip sistemi yormuyoruz.
+        products = load_products(min_price=min_p, max_price=max_p, limit=50)
+
         if not products:
-            return jsonify({
-                "error_title": "Sistem Hatası",
-                "error_message": "Sistemde tanımlı ürün bulunamadı. Lütfen daha sonra tekrar dene.",
+             # Eğer bütçe aralığında ürün yoksa hata dön
+             return jsonify({
+                "error_title": "Ürün Bulunamadı",
+                "error_message": "Aradığın kriterlere veya bütçe aralığına uygun ürün veritabanında bulunamadı.",
                 "error_type": "no_products",
                 "ask_new_input": True
-            }), 500
+            }), 404
 
         if _detect_unsupported_category(user_input):
             return jsonify({
@@ -881,24 +1056,39 @@ def recommend():
             if not band_ordered and ordered:
                 band_ordered = ordered[:3]
 
+# --- ESKİ KODUN YERİNE GELECEK YENİ BLOK ---
+
         if not band_ordered:
             band_ordered = [main_product]
 
-        display_main = band_ordered[0]
+        pool = band_ordered if band_ordered else ordered
+        seen_keys = set()
+        unique_pool: List[Dict[str, Any]] = []
+        for p in pool:
+            key = p.get("id") or p.get("name")
+            if key and key not in seen_keys:
+                seen_keys.add(key)
+                unique_pool.append(p)
+
+        display_main = main_product or (unique_pool[0] if unique_pool else pool[0])
+        main_key = display_main.get("id") or display_main.get("name")
+        alt_candidates = [p for p in unique_pool if (p.get("id") or p.get("name")) != main_key]
+        if len(alt_candidates) >= 2:
+            try:
+                alt_selection = random.sample(alt_candidates, 2)
+            except Exception:
+                alt_selection = alt_candidates[:2]
+        else:
+            alt_selection = alt_candidates
+
+        selection = [display_main] + alt_selection
 
         recommended_payload: List[Dict[str, Any]] = []
-        main_name = display_main.get("name")
-
-        for p in band_ordered[:3]:
-            if p.get("name") == main_name:
+        for p in selection:
+            if (p.get("id") or p.get("name")) == main_key:
                 ai_reason = ai_description
             else:
-                short_praise = generate_ai_short_praise(p)
-                ai_reason = (
-                    f"{short_praise} "
-                    f"{p.get('name')} fiyat/performans açısından bütçene ve kullanım senaryona yakın "
-                    f"bir alternatif olarak listelendi."
-                )
+                ai_reason = generate_ai_alt_snippet(p)
 
             recommended_payload.append({
                 "name": p.get("name"),
@@ -907,6 +1097,8 @@ def recommend():
                 "score": _usage_score(p, usage),
                 "ai_reason": ai_reason,
             })
+            
+        # --- BLOK SONU ---
 
         if budget_range:
             display_low = min(budget_range[0], budget_range[1])

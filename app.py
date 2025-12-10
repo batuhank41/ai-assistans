@@ -83,11 +83,13 @@ def _openai_chat(
 def load_products(min_price=None, max_price=None, limit=100) -> List[Dict[str, Any]]:
     products = []
     
+    # --- 1. AYAR: CANLI SUNUCUYA UYUMLU BAĞLANTI ---
+    # Render'daki ayarlardan okur, bulamazsa localhost varsayılanlarını kullanır.
     db_config = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': '', 
-        'database': 'projedb'
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', ''), 
+        'database': os.getenv('DB_NAME', 'projedb')
     }
 
     try:
@@ -96,124 +98,136 @@ def load_products(min_price=None, max_price=None, limit=100) -> List[Dict[str, A
         if connection.is_connected():
             cursor = connection.cursor(dictionary=True)
             
-            # ============================================================
-            # 1. BÖLÜM: LAPTOPLARI ÇEK (hepsiburada_dizustu_bilgisayar)
-            # ============================================================
-            sql_laptop = "SELECT * FROM `hepsiburada_dizustu_bilgisayar` WHERE 1=1"
-            params_laptop = []
-            
-            # Laptop Fiyat Filtresi (Fiyat sütunu: '15.000 TL')
-            if min_price is not None:
-                sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) >= %s"
-                params_laptop.append(min_price)
-            if max_price is not None:
-                sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) <= %s"
-                params_laptop.append(max_price)
-            
-            # Her iki kategoriden de dengeli gelsin diye limiti paylaştırıyoruz (Örn: 50 laptop, 50 telefon)
-            split_limit = int(limit / 2) + 10 # Biraz espayı bırakalım
-            sql_laptop += " ORDER BY RAND() LIMIT %s"
-            params_laptop.append(split_limit)
+            # Limiti ikiye bölüyoruz (Yarısı bilgisayar, yarısı telefon)
+            half_limit = int(limit / 2) + 5 
 
-            cursor.execute(sql_laptop, tuple(params_laptop))
-            laptop_rows = cursor.fetchall()
-
-            for row in laptop_rows:
-                features = []
-                if row.get('_lemci'): features.append(row['_lemci'])
+            # ============================================================
+            # 2. BÖLÜM: LAPTOPLARI ÇEK (Tablo: hepsiburada_dizustu_bilgisayar)
+            # ============================================================
+            try:
+                sql_laptop = "SELECT * FROM `hepsiburada_dizustu_bilgisayar` WHERE 1=1"
+                params_laptop = []
                 
-                # Nesil düzeltmesi (12.Nesil. Nesil hatasını önler)
-                raw_gen = str(row.get('_lemci_Nesli', ''))
-                clean_gen = raw_gen.lower().replace('nesil', '').replace('.', '').strip()
-                if clean_gen: features.append(f"{clean_gen}. Nesil")
+                if min_price is not None:
+                    sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) >= %s"
+                    params_laptop.append(min_price)
+                if max_price is not None:
+                    sql_laptop += " AND CAST(REPLACE(REPLACE(Fiyat, ' TL', ''), '.', '') AS UNSIGNED) <= %s"
+                    params_laptop.append(max_price)
                 
-                if row.get('Ram_Sistem_Belle_i_'): features.append(f"{row['Ram_Sistem_Belle_i_']} RAM")
-                if row.get('SSD_Kapasitesi'): features.append(f"{row['SSD_Kapasitesi']} SSD")
-                if row.get('Ekran_Kart_'): features.append(row['Ekran_Kart_'])
+                sql_laptop += " ORDER BY RAND() LIMIT %s"
+                params_laptop.append(half_limit)
 
-                raw_name = row.get('_r_n_Ad_', '')
-                brand_guess = raw_name.split(" ")[0] if raw_name else "Bilinmiyor"
-                
-                # Fiyat Temizleme
-                raw_price_str = row.get('Fiyat', '0')
-                try:
-                    clean_price = int(raw_price_str.replace('.','').replace(' TL','').strip())
-                except:
-                    clean_price = 0
+                cursor.execute(sql_laptop, tuple(params_laptop))
+                laptop_rows = cursor.fetchall()
 
-                products.append({
-                    "name": raw_name,
-                    "price": raw_price_str,
-                    "brand": brand_guess,
-                    "category": "Bilgisayar",
-                    "features": features,
-                    "url": "#",
-                    "_price": clean_price
-                })
+                for row in laptop_rows:
+                    features = []
+                    if row.get('_lemci'): features.append(row['_lemci'])
+                    
+                    # Nesil düzeltmesi
+                    raw_gen = str(row.get('_lemci_Nesli', ''))
+                    clean_gen = raw_gen.lower().replace('nesil', '').replace('.', '').strip()
+                    if clean_gen: features.append(f"{clean_gen}. Nesil")
+                    
+                    if row.get('Ram_Sistem_Belle_i_'): features.append(f"{row['Ram_Sistem_Belle_i_']} RAM")
+                    if row.get('SSD_Kapasitesi'): features.append(f"{row['SSD_Kapasitesi']} SSD")
+                    if row.get('Ekran_Kart_'): features.append(row['Ekran_Kart_'])
+
+                    raw_name = row.get('_r_n_Ad_', '')
+                    brand_guess = raw_name.split(" ")[0] if raw_name else "Bilinmiyor"
+                    
+                    raw_price_str = row.get('Fiyat', '0')
+                    try:
+                        clean_price = int(raw_price_str.replace('.','').replace(' TL','').strip())
+                    except:
+                        clean_price = 0
+
+                    products.append({
+                        "name": raw_name,
+                        "price": clean_price,
+                        "brand": brand_guess,
+                        "category": "Bilgisayar",
+                        "features": features,
+                        "url": "#",
+                        "_price": clean_price
+                    })
+            except Error as e:
+                print(f"Laptop verisi çekilirken hata (Tablo yoksa yoksay): {e}")
 
             # ============================================================
-            # 2. BÖLÜM: TELEFONLARI ÇEK (Trendyol_Smartphones_dataset)
+            # 3. BÖLÜM: TELEFONLARI ÇEK (Tablo: yeni_telefonlar)
             # ============================================================
-            sql_phone = "SELECT * FROM `Trendyol_Smartphones_dataset` WHERE 1=1"
-            params_phone = []
+            # Senin son kurduğun veritabanı tablosu `yeni_telefonlar` olduğu için kodu ona göre düzelttim.
+            try:
+                sql_phone = "SELECT * FROM `yeni_telefonlar` WHERE 1=1"
+                params_phone = []
 
-            # Telefon Fiyat Filtresi (Price sütunu: '3500' veya '3500 TL')
-            if min_price is not None:
-                sql_phone += " AND CAST(Price AS UNSIGNED) >= %s"
-                params_phone.append(min_price)
-            if max_price is not None:
-                sql_phone += " AND CAST(Price AS UNSIGNED) <= %s"
-                params_phone.append(max_price)
+                # Fiyat Filtresi (Sütun adı: fiyat - küçük harfle)
+                if min_price is not None:
+                    sql_phone += " AND CAST(REPLACE(REPLACE(fiyat, ' TL', ''), '.', '') AS UNSIGNED) >= %s"
+                    params_phone.append(min_price)
+                if max_price is not None:
+                    sql_phone += " AND CAST(REPLACE(REPLACE(fiyat, ' TL', ''), '.', '') AS UNSIGNED) <= %s"
+                    params_phone.append(max_price)
 
-            sql_phone += " ORDER BY RAND() LIMIT %s"
-            params_phone.append(split_limit)
+                sql_phone += " ORDER BY RAND() LIMIT %s"
+                params_phone.append(half_limit)
 
-            cursor.execute(sql_phone, tuple(params_phone))
-            phone_rows = cursor.fetchall()
+                cursor.execute(sql_phone, tuple(params_phone))
+                phone_rows = cursor.fetchall()
 
-            for row in phone_rows:
-                features = []
-                if row.get('CPU'): features.append(f"İşlemci: {row['CPU']}")
-                if row.get('RAM'): features.append(f"{row['RAM']}GB RAM")
-                if row.get('Storage'): features.append(f"{row['Storage']}GB Hafıza")
-                if row.get('Screen_Size'): features.append(f"{row['Screen_Size']} inç Ekran")
-                if row.get('Camera_Resolution'): features.append(f"{row['Camera_Resolution']} MP Kamera")
-                if row.get('Battery_Power'): features.append(f"{row['Battery_Power']} mAh")
+                for row in phone_rows:
+                    features = []
+                    
+                    # Türkçe sütun isimlerini kullanıyoruz (Son kurduğumuz yapı)
+                    if row.get('isletim_sistemi'): features.append(row['isletim_sistemi'])
+                    if row.get('dahili_hafiza'): features.append(f"{row['dahili_hafiza']} Hafıza")
+                    if row.get('ram_kapasitesi'): features.append(f"{row['ram_kapasitesi']} RAM")
+                    if row.get('ekran_boyutu'): features.append(f"{row['ekran_boyutu']} Ekran")
+                    if row.get('kamera_cozunurlugu'): features.append(f"{row['kamera_cozunurlugu']} Kamera")
+                    if row.get('batarya_kapasitesi_araligi'): features.append(f"{row['batarya_kapasitesi_araligi']}")
 
-                # Marka ve Model Birleştirme
-                brand_val = row.get('Brand', '')
-                model_val = row.get('Model', '')
-                full_name = f"{brand_val} {model_val}".strip()
+                    # İsim ve Marka
+                    urun_basligi = row.get('urun_basligi', 'Bilinmeyen Telefon')
+                    marka = row.get('marka', 'Genel')
+                    
+                    if marka.lower() not in urun_basligi.lower():
+                        full_name = f"{marka} {urun_basligi}".strip()
+                    else:
+                        full_name = urun_basligi
 
-                # Fiyat Temizleme
-                raw_price_str = str(row.get('Price', '0'))
-                try:
-                    # Virgül veya nokta karmaşasını temizle
-                    clean_price = int(float(raw_price_str.replace('TL', '').replace('.', '').replace(',', '.').strip()))
-                except:
-                    clean_price = 0
+                    link_val = row.get('link', '#')
 
-                products.append({
-                    "name": full_name,
-                    "price": clean_price, # Telefonlar için direkt sayı basıyoruz
-                    "brand": brand_val,
-                    "category": "Telefon",
-                    "features": features,
-                    "url": row.get('Link', '#') if row.get('Link') else "#", # Link varsa al
-                    "_price": clean_price
-                })
+                    # Fiyat Temizleme
+                    raw_price_str = str(row.get('fiyat', '0'))
+                    try:
+                        clean_price = int(float(raw_price_str.replace('TL', '').replace('.', '').replace(',', '.').strip()))
+                    except:
+                        clean_price = 0
+
+                    products.append({
+                        "name": full_name,
+                        "price": clean_price,
+                        "brand": marka,
+                        "category": "Telefon",
+                        "features": features,
+                        "url": link_val,
+                        "_price": clean_price
+                    })
+            except Error as e:
+                print(f"Telefon verisi çekilirken hata: {e}")
 
             cursor.close()
             connection.close()
             
-            # Listeyi karıştır ki hep önce bilgisayarlar gelmesin
-            import random
+            # Listeyi karıştır
             random.shuffle(products)
             
-            print(f"Toplam {len(products)} ürün çekildi (Laptop + Telefon).")
+            print(f"Toplam {len(products)} ürün çekildi.")
 
     except Error as e:
-        print(f"Veritabanı Hatası: {e}")
+        print(f"Genel Veritabanı Bağlantı Hatası: {e}")
         return []
 
     return products

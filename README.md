@@ -1,86 +1,85 @@
-# 🛒 AI Alışveriş Asistanı
+🛒 AI Shopping Assistant
+This project is a web application that processes natural language shopping requests and suggests suitable products. It is developed using the Flask framework and the OpenAI API.
 
-Bu proje, doğal dildeki alışveriş isteklerini işleyen ve uygun ürünleri öneren bir web uygulamasıdır. Flask framework'ü ve OpenAI API'si kullanılarak geliştirilmiştir.
+✨ Features
+🤖 Natural Language Processing: Automatic parsing of budget, product type, and brand
 
-## ✨ Özellikler
+🔍 Flexible Product Search: Smart search within a budget range of ±5000/2000 TL
 
-- 🤖 **Doğal Dil İşleme**: Bütçe, ürün türü ve marka otomatik ayrıştırma
-- 🔍 **Esnek Ürün Arama**: Bütçe ±5000/2000 TL aralığında akıllı arama
-- 💬 **AI Açıklamaları**: OpenAI GPT-3.5 ile ikna edici ürün açıklamaları
-- 🔄 **Alternatif Ürün Önerileri**: Ana ürün bulunamazsa kategori bazlı alternatifler
-- 🎨 **Modern UI**: Responsive tasarım ve kullanıcı dostu arayüz
-- ⚡ **Hızlı Yanıt**: AJAX ile anlık sonuçlar
+💬 AI Descriptions: Persuasive product descriptions with OpenAI GPT-3.5
 
-## 📋 Gereksinimler
+🔄 Alternative Product Recommendations: Category-based alternatives if the main product is not found
 
-- Python 3.8+
-- Flask
-- OpenAI Python kütüphanesi
+🎨 Modern UI: Responsive design and user-friendly interface
 
-## 🚀 Kurulum
+⚡ Fast Response: Instant results with AJAX
 
-1. **Proje dizinine gidin:**
-   ```bash
-   cd proje
-   ```
+📋 Prerequisites
+Python 3.8+
 
-2. **Gerekli paketleri yükleyin:**
-   ```bash
-   pip install flask openai
-   ```
+Flask
 
-3. **OpenAI API anahtarınızı ayarlayın:**
-   `app.py` dosyasındaki `client = OpenAI(api_key="YOUR_API_KEY")` satırında kendi OpenAI API anahtarınızı girin.
+OpenAI Python library
 
-4. **Uygulamayı çalıştırın:**
-   ```bash
-   python app.py
-   ```
+🚀 Installation
+Navigate to the project directory:
 
-5. **Tarayıcınızda açın:**
-   http://127.0.0.1:5000/
+Bash
+cd project
+Install the required packages:
 
-## 💡 Kullanım
+Bash
+pip install flask openai
+Set your OpenAI API key:
+Enter your own OpenAI API key in the line client = OpenAI(api_key="YOUR_API_KEY") inside the app.py file.
 
-1. Ana sayfada metin kutusuna istediğinizi yazın
-2. "Gönder" butonuna tıklayın
-3. AI'ın önerisini görün!
+Run the application:
 
-## 🔗 API Endpoints
+Bash
+python app.py
+Open it in your browser:
+http://127.0.0.1:5000/
 
-- `GET /`: Ana sayfa
-- `POST /recommend`: Ürün önerisi API'si
+💡 Usage
+Type what you want in the text box on the homepage
 
-## 📁 Dosya Yapısı
+Click the "Submit" button
 
-```
-proje/
-├── app.py                 # Ana Flask uygulaması
-├── products.json          # 12+ simüle edilmiş ürün
-├── requirements.txt       # Python bağımlılıkları
-├── README.md             # Bu dokümantasyon
+See the AI's recommendation!
+
+🔗 API Endpoints
+GET /: Homepage
+
+POST /recommend: Product recommendation API
+
+📁 File Structure
+project/
+├── app.py                 # Main Flask application
+├── products.json          # 12+ simulated products
+├── requirements.txt       # Python dependencies
+├── README.md              # This documentation
 └── templates/
-    ├── index.html        # Ana arayüz
-    └── styles.css        # CSS stilleri
-```
+    ├── index.html         # Main interface
+    └── styles.css         # CSS styles
+🎯 Example Usage
+✅ Examples Where Products Are Found Directly:
+"I want an iPhone with 25000 TL"
 
-## 🎯 Örnek Kullanım
+"Apple MacBook with 35000 TL budget"
 
-### ✅ Doğrudan Ürün Bulunan Örnekler:
-- "25000 TL ile iPhone istiyorum"
-- "35000 TL bütçe Apple MacBook"
-- "15000 TL Samsung telefon"
+"15000 TL Samsung phone"
 
-### 🔄 Alternatif Ürün Gösterilen Örnekler:
-- "5000 TL ile Samsung telefon" → Çok düşük bütçe, alternatif öner
-- "100000 TL bilgisayar" → Çok yüksek bütçe, uygun ürünler öner
+🔄 Examples Showing Alternative Products:
+"Samsung phone with 5000 TL" → Very low budget, suggest alternatives
 
-## ⚠️ Notlar
+"100000 TL computer" → Very high budget, suggest suitable products
 
-- Bu uygulama simüle edilmiş veriler kullanmaktadır
-- Gerçek e-ticaret entegrasyonu için ek geliştirmeler gerekebilir
-- OpenAI API kullanım ücreti uygulanabilir
+⚠️ Notes
+This application uses simulated data
 
-## 📄 Lisans
+Additional developments may be required for real e-commerce integration
 
-Bu proje açık kaynak kodludur ve MIT lisansı altında yayınlanmıştır.
+OpenAI API usage fees may apply
+
+📄 License
+This project is open-source and released under the MIT license.
